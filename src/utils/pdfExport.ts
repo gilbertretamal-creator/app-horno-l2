@@ -104,14 +104,15 @@ function applyInlineStyles(container: HTMLElement) {
         // Skip diagram inputs – they live inside SVG foreignObject
         if (inp.classList.contains('diagram-input')) return;
 
-        inp.style.height = '28px';
-        inp.style.lineHeight = '28px';
+        inp.style.height = '32px';
+        inp.style.lineHeight = '20px';
         inp.style.fontSize = '12px';
-        inp.style.padding = '0 6px';
+        inp.style.padding = '6px 8px';
         inp.style.boxSizing = 'border-box';
         inp.style.border = '1px solid #000';
         inp.style.borderRadius = '4px';
         inp.style.verticalAlign = 'middle';
+        inp.style.textAlign = 'center';
         inp.style.width = '100%';
         inp.style.fontWeight = 'bold';
         inp.style.color = '#1f2937';
@@ -284,10 +285,10 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
             // Copy the select's inline styling expectations
             span.style.display = 'block';
             span.style.width = '100%';
-            span.style.height = '28px';
-            span.style.lineHeight = '28px';
+            span.style.height = '32px';
+            span.style.lineHeight = '20px';
             span.style.fontSize = '12px';
-            span.style.padding = '0 6px';
+            span.style.padding = '6px 8px';
             span.style.boxSizing = 'border-box';
             span.style.border = '1px solid #d1d5db';
             span.style.borderRadius = '4px';
