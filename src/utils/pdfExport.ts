@@ -259,78 +259,46 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
         });
 
         // ────────────────────────────────────────────
-        // 3b. Replace form inputs & selects with <span> for perfect centering
-        //      html2canvas renders input values with its own logic that ignores
-        //      CSS centering. Spans give us full control over text position.
-        //      Diagram inputs (inside SVG foreignObject) are left untouched.
+        // 3b. Sync form values so html2canvas can see them
         // ────────────────────────────────────────────
-
-        // Helper to create a styled span that replaces an input/select
-        const createReplacementSpan = (text: string, opts: { align?: string, bg?: string, border?: string } = {}) => {
-            const span = document.createElement('span');
-            span.textContent = text;
-            span.style.display = 'block';
-            span.style.width = '100%';
-            span.style.height = '32px';
-            span.style.lineHeight = '32px';
-            span.style.fontSize = '12px';
-            span.style.padding = '0 8px';
-            span.style.boxSizing = 'border-box';
-            span.style.border = opts.border || '1px solid #000';
-            span.style.borderRadius = '4px';
-            span.style.backgroundColor = opts.bg || '#f3f4f6';
-            span.style.color = '#1f2937';
-            span.style.fontWeight = 'bold';
-            span.style.textAlign = opts.align || 'center';
-            span.style.overflow = 'hidden';
-            span.style.whiteSpace = 'nowrap';
-            return span;
-        };
-
-        // Left-aligned field names
-        const leftAlignedFields = ['date', 'feed', 'rpm', 'technician'];
-
-        // Replace all non-diagram <input> elements
-        const origInputs = element.querySelectorAll('input');
-        const cloneInputs = clone.querySelectorAll('input');
-        // Process in reverse to avoid index shifting when replacing nodes
-        for (let i = cloneInputs.length - 1; i >= 0; i--) {
-            const cloneInp = cloneInputs[i] as HTMLInputElement;
-            // Skip diagram inputs – they live inside SVG foreignObject
-            if (cloneInp.classList.contains('diagram-input')) continue;
-
-            const origInp = origInputs[i] as HTMLInputElement | undefined;
-            const value = origInp?.value || cloneInp.value || '';
-            const name = cloneInp.getAttribute('name') || '';
-            const align = leftAlignedFields.includes(name) ? 'left' : 'center';
-
-            const span = createReplacementSpan(value, { align });
-            cloneInp.parentNode?.replaceChild(span, cloneInp);
-        }
+        // Sync all inputs: copy .value into the DOM attribute
+        const origInputs = element.querySelectorAll('input, textarea');
+        const cloneInputs = clone.querySelectorAll('input, textarea');
+        origInputs.forEach((orig, i) => {
+            const cl = cloneInputs[i] as HTMLInputElement | HTMLTextAreaElement | undefined;
+            if (cl) {
+                cl.setAttribute('value', (orig as HTMLInputElement).value);
+                cl.value = (orig as HTMLInputElement).value;
+            }
+        });
 
         // Replace <select> with <span> showing the selected text
         const origSelects = element.querySelectorAll('select');
         const cloneSelects = clone.querySelectorAll('select');
-        for (let i = cloneSelects.length - 1; i >= 0; i--) {
+        cloneSelects.forEach((sel, i) => {
             const origSel = origSelects[i] as HTMLSelectElement | undefined;
-            const selectedText = origSel?.value || (cloneSelects[i] as HTMLSelectElement).value || '';
-            const span = createReplacementSpan(selectedText, {
-                align: 'left',
-                bg: '#ffffff',
-                border: '1px solid #d1d5db'
-            });
-            cloneSelects[i].parentNode?.replaceChild(span, cloneSelects[i]);
-        }
-
-        // Sync textarea values (keep as textarea, centering not needed)
-        const origTextareas = element.querySelectorAll('textarea');
-        const cloneTextareas = clone.querySelectorAll('textarea');
-        origTextareas.forEach((orig, i) => {
-            const cl = cloneTextareas[i] as HTMLTextAreaElement | undefined;
-            if (cl) {
-                cl.textContent = (orig as HTMLTextAreaElement).value;
-                cl.value = (orig as HTMLTextAreaElement).value;
-            }
+            const span = document.createElement('span');
+            // Use .value directly — React controlled selects set .value but
+            // selectedIndex may not reflect it. The option values === display text.
+            const selectedText = origSel?.value || (sel as HTMLSelectElement).value || '';
+            span.textContent = selectedText;
+            // Copy the select's inline styling expectations
+            span.style.display = 'block';
+            span.style.width = '100%';
+            span.style.height = '32px';
+            span.style.lineHeight = '20px';
+            span.style.fontSize = '12px';
+            span.style.padding = '6px 8px';
+            span.style.boxSizing = 'border-box';
+            span.style.border = '1px solid #d1d5db';
+            span.style.borderRadius = '4px';
+            span.style.backgroundColor = '#ffffff';
+            span.style.color = '#1f2937';
+            span.style.textAlign = 'left';
+            span.style.paddingLeft = '8px';
+            span.style.overflow = 'hidden';
+            span.style.whiteSpace = 'nowrap';
+            sel.parentNode?.replaceChild(span, sel);
         });
 
         // ────────────────────────────────────────────
