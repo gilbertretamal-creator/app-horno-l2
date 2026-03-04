@@ -277,9 +277,9 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
         cloneSelects.forEach((sel, i) => {
             const origSel = origSelects[i] as HTMLSelectElement | undefined;
             const span = document.createElement('span');
-            const selectedText = origSel
-                ? origSel.options[origSel.selectedIndex]?.text || ''
-                : (sel as HTMLSelectElement).options[(sel as HTMLSelectElement).selectedIndex]?.text || '';
+            // Use .value directly — React controlled selects set .value but
+            // selectedIndex may not reflect it. The option values === display text.
+            const selectedText = origSel?.value || (sel as HTMLSelectElement).value || '';
             span.textContent = selectedText;
             // Copy the select's inline styling expectations
             span.style.display = 'block';
