@@ -107,7 +107,7 @@ function applyInlineStyles(container: HTMLElement) {
         inp.style.height = '32px';
         inp.style.lineHeight = '32px';
         inp.style.fontSize = '14px';
-        inp.style.padding = '6px 8px';
+        inp.style.padding = '0 8px';
         inp.style.boxSizing = 'border-box';
         inp.style.border = '1px solid #000';
         inp.style.borderRadius = '4px';
@@ -288,7 +288,7 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
             span.style.height = '32px';
             span.style.lineHeight = '32px';
             span.style.fontSize = '14px';
-            span.style.padding = '6px 8px';
+            span.style.padding = '0 8px';
             span.style.boxSizing = 'border-box';
             span.style.border = '1px solid #d1d5db';
             span.style.borderRadius = '4px';
