@@ -116,7 +116,7 @@ function applyInlineStyles(container: HTMLElement) {
         inp.style.fontWeight = 'bold';
         inp.style.color = '#1f2937';
         inp.style.backgroundColor = '#f3f4f6';
-        inp.style.WebkitAppearance = 'none';
+        inp.style.webkitAppearance = 'none';
     });
 
     // Read-only inputs with explicit black border already have it via className,
