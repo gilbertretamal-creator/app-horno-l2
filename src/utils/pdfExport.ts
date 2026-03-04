@@ -258,6 +258,49 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
         });
 
         // ────────────────────────────────────────────
+        // 3b. Sync form values so html2canvas can see them
+        // ────────────────────────────────────────────
+        // Sync all inputs: copy .value into the DOM attribute
+        const origInputs = element.querySelectorAll('input, textarea');
+        const cloneInputs = clone.querySelectorAll('input, textarea');
+        origInputs.forEach((orig, i) => {
+            const cl = cloneInputs[i] as HTMLInputElement | HTMLTextAreaElement | undefined;
+            if (cl) {
+                cl.setAttribute('value', (orig as HTMLInputElement).value);
+                cl.value = (orig as HTMLInputElement).value;
+            }
+        });
+
+        // Replace <select> with <span> showing the selected text
+        const origSelects = element.querySelectorAll('select');
+        const cloneSelects = clone.querySelectorAll('select');
+        cloneSelects.forEach((sel, i) => {
+            const origSel = origSelects[i] as HTMLSelectElement | undefined;
+            const span = document.createElement('span');
+            const selectedText = origSel
+                ? origSel.options[origSel.selectedIndex]?.text || ''
+                : (sel as HTMLSelectElement).options[(sel as HTMLSelectElement).selectedIndex]?.text || '';
+            span.textContent = selectedText;
+            // Copy the select's inline styling expectations
+            span.style.display = 'block';
+            span.style.width = '100%';
+            span.style.height = '28px';
+            span.style.lineHeight = '28px';
+            span.style.fontSize = '12px';
+            span.style.padding = '0 6px';
+            span.style.boxSizing = 'border-box';
+            span.style.border = '1px solid #d1d5db';
+            span.style.borderRadius = '4px';
+            span.style.backgroundColor = '#ffffff';
+            span.style.color = '#1f2937';
+            span.style.textAlign = 'left';
+            span.style.paddingLeft = '8px';
+            span.style.overflow = 'hidden';
+            span.style.whiteSpace = 'nowrap';
+            sel.parentNode?.replaceChild(span, sel);
+        });
+
+        // ────────────────────────────────────────────
         // 4. Force inline styles on the clone
         // ────────────────────────────────────────────
         applyInlineStyles(clone);
