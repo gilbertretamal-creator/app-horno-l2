@@ -4,6 +4,7 @@ import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
 import { RecentInspections } from './components/RecentInspections';
 import { TrendAnalysis } from './components/TrendAnalysis';
+import { CalendarPicker } from './components/CalendarPicker';
 import { InspectionData, initialData } from './types';
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
@@ -235,12 +236,10 @@ function App() {
               <span className="font-semibold block md:inline">Consultar Histórico:</span> <span className="text-sm">Recupera la última inspección o filtra por fecha.</span>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
-              <input
-                type="date"
+              <CalendarPicker
                 value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-                autoComplete="off"
-                className="flex-1 md:w-auto p-2 border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                onChange={setSearchDate}
+                refreshKey={trendRefreshKey}
               />
               <button
                 onClick={handleFetchHistorical}
