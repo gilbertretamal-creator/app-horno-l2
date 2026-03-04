@@ -105,8 +105,8 @@ function applyInlineStyles(container: HTMLElement) {
         if (inp.classList.contains('diagram-input')) return;
 
         inp.style.height = '32px';
-        inp.style.lineHeight = '20px';
-        inp.style.fontSize = '12px';
+        inp.style.lineHeight = '32px';
+        inp.style.fontSize = '14px';
         inp.style.padding = '6px 8px';
         inp.style.boxSizing = 'border-box';
         inp.style.border = '1px solid #000';
@@ -286,8 +286,8 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
             span.style.display = 'block';
             span.style.width = '100%';
             span.style.height = '32px';
-            span.style.lineHeight = '20px';
-            span.style.fontSize = '12px';
+            span.style.lineHeight = '32px';
+            span.style.fontSize = '14px';
             span.style.padding = '6px 8px';
             span.style.boxSizing = 'border-box';
             span.style.border = '1px solid #d1d5db';

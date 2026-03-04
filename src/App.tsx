@@ -32,7 +32,11 @@ function App() {
         .order('created_at', { ascending: false })
         .limit(5);
       if (!error && rows) {
-        setRecentRecords(rows as any);
+        // Sort by fecha descending (latest 5), then reverse for oldest→newest display
+        const sorted = (rows as any[]).sort((a: any, b: any) => {
+          return (a.fecha || '').localeCompare(b.fecha || '');
+        });
+        setRecentRecords(sorted);
       }
     } catch (e) {
       console.error('Error fetching recent records:', e);
@@ -192,6 +196,7 @@ function App() {
       if (error) throw error;
       if (rows && rows.length > 0) {
         setData(mapRowToFormData(rows[0]));
+        setSearchDate(''); // Clear calendar selection to avoid confusion
       }
     } catch (err: any) {
       console.error('Error loading record:', err);
