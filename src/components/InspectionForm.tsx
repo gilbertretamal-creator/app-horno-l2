@@ -4,9 +4,10 @@ import { InspectionData } from '../types';
 interface InspectionFormProps {
     data: InspectionData;
     onChange: (field: keyof InspectionData, value: string) => void;
+    readOnly?: boolean;
 }
 
-export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }) => {
+export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, readOnly = false }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         onChange(name as keyof InspectionData, value);
@@ -25,6 +26,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                         name="date"
                         value={data.date}
                         onChange={handleChange}
+                        readOnly={readOnly}
                         autoComplete="off"
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                     />
@@ -35,6 +37,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                         name="technician"
                         value={data.technician}
                         onChange={(e) => onChange('technician', e.target.value)}
+                        disabled={readOnly}
                         autoComplete="off"
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
                     >
@@ -53,6 +56,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                         name="feed"
                         value={data.feed}
                         onChange={handleChange}
+                        readOnly={readOnly}
                         placeholder="Ej: 1400 + 1 ton"
                         autoComplete="off"
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
@@ -66,6 +70,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                         name="rpm"
                         value={data.rpm}
                         onChange={handleChange}
+                        readOnly={readOnly}
                         placeholder="Ej: 3.5"
                         autoComplete="off"
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
@@ -95,6 +100,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                                     name={fieldName}
                                     value={value}
                                     onChange={handleChange}
+                                    readOnly={readOnly}
                                     placeholder="0.0"
                                     autoComplete="off"
                                     className={`w-full p-2 border rounded outline-none pr-8
@@ -261,6 +267,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange }
                     name="observations"
                     value={data.observations}
                     onChange={(e) => onChange('observations', e.target.value)}
+                    readOnly={readOnly}
                     placeholder="Escriba aquí cualquier observación adicional de la inspección..."
                     autoComplete="off"
                     className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-gray-50 text-gray-700"

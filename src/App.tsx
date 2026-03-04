@@ -1,19 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Download, Save, RefreshCw, Search } from 'lucide-react';
+import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle } from 'lucide-react';
 import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
 import { RecentInspections } from './components/RecentInspections';
 import { TrendAnalysis } from './components/TrendAnalysis';
 import { CalendarPicker } from './components/CalendarPicker';
+import { LandingPage } from './components/LandingPage';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { InspectionData, initialData } from './types';
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
+import './components/LandingPage.css';
 
 const STORAGE_KEY = 'kiln_inspection_draft';
 
-function App() {
-  const [data, setData] = useState<InspectionData>(initialData);
+type AppView = 'landing' | 'app';
 
+function App() {
+  const [view, setView] = useState<AppView>('landing');
+  const [isGuest, setIsGuest] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+
+  const [data, setData] = useState<InspectionData>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -21,6 +29,45 @@ function App() {
   const [recentRecords, setRecentRecords] = useState<{ id: number; fecha: string; tecnico: string }[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setView('app');
+        setIsGuest(false);
+      }
+    });
+  }, []);
+
+  // Handle login success
+  const handleLoginSuccess = () => {
+    setIsGuest(false);
+    setView('app');
+  };
+
+  // Handle guest access
+  const handleGuestAccess = () => {
+    setIsGuest(true);
+    setView('app');
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setView('landing');
+    setIsGuest(false);
+    setData(initialData);
+    setSearchDate('');
+  };
+
+  // Handle exit (guest)
+  const handleExit = () => {
+    setView('landing');
+    setIsGuest(false);
+    setData(initialData);
+    setSearchDate('');
+  };
 
   // Fetch last 5 recent inspections from Supabase
   const fetchRecentRecords = useCallback(async () => {
@@ -32,7 +79,6 @@ function App() {
         .order('created_at', { ascending: false })
         .limit(5);
       if (!error && rows) {
-        // Sort by fecha descending (latest 5), then reverse for oldest→newest display
         const sorted = (rows as any[]).sort((a: any, b: any) => {
           return (a.fecha || '').localeCompare(b.fecha || '');
         });
@@ -45,15 +91,19 @@ function App() {
     }
   }, []);
 
-  // Auto-fetch on mount
+  // Auto-fetch on mount when in app view
   useEffect(() => {
-    fetchRecentRecords();
-  }, [fetchRecentRecords]);
+    if (view === 'app') {
+      fetchRecentRecords();
+    }
+  }, [view, fetchRecentRecords]);
 
-  // Auto-save to local storage on change
+  // Auto-save to local storage on change (only for authenticated users)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
+    if (!isGuest) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+  }, [data, isGuest]);
 
   const handleChange = (field: keyof InspectionData, value: string) => {
     setData(prev => ({ ...prev, [field]: value }));
@@ -85,26 +135,21 @@ function App() {
   const handleSaveSupabase = async () => {
     setIsSaving(true);
 
-    // Map data to snake_case for Supabase, matching actual Schema
     const payload: Record<string, any> = {};
-    // Explicit Database Mapping schema
     const exactMappings: Record<string, string> = {
       date: 'fecha',
       technician: 'tecnico',
       feed: 'alimentacion',
       rpm: 'rpm',
       observations: 'observaciones',
-      // Llantas
       innerI: 'temp_llanta_i',
       innerII: 'temp_llanta_ii',
       innerIII: 'temp_llanta_iii',
       innerIV: 'temp_llanta_iv',
-      // Manto Andes
       andesI: 'temp_manto_andes_i',
       andesII: 'temp_manto_andes_ii',
       andesIII: 'temp_manto_andes_iii',
       andesIV: 'temp_manto_andes_iv',
-      // Manto Pacifico
       pacificoI: 'temp_manto_pacifico_i',
       pacificoII: 'temp_manto_pacifico_ii',
       pacificoIII: 'temp_manto_pacifico_iii',
@@ -118,7 +163,6 @@ function App() {
         if (textFields.includes(key)) {
           payload[exactMappings[key]] = value;
         } else {
-          // Parse numeric values strictly
           payload[exactMappings[key]] = value === '' ? null : Number(value);
         }
       } else if (
@@ -126,7 +170,6 @@ function App() {
         key.startsWith('temp') ||
         key.startsWith('empuje')
       ) {
-        // Convert camelCase with Roman numerals to snake_case.
         const mappedKey = key.replace(/(I{1,3}|IV|V)(_[A-Z]+)?$/, (match) => '_' + match.toLowerCase());
         payload[mappedKey] = value === '' ? null : Number(value);
       }
@@ -138,15 +181,14 @@ function App() {
     if (!error) {
       setData(initialData);
       localStorage.removeItem(STORAGE_KEY);
-      fetchRecentRecords(); // Refresh dashboard after save
-      setTrendRefreshKey(k => k + 1); // Refresh trends
+      fetchRecentRecords();
+      setTrendRefreshKey(k => k + 1);
     } else {
       console.error(error);
       alert('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
     }
   };
 
-  // Shared reverse-mapping logic used by both fetch-by-date and load-by-id
   const reverseMappings: Record<string, string> = {
     fecha: 'date',
     tecnico: 'technician',
@@ -196,7 +238,7 @@ function App() {
       if (error) throw error;
       if (rows && rows.length > 0) {
         setData(mapRowToFormData(rows[0]));
-        setSearchDate(''); // Clear calendar selection to avoid confusion
+        setSearchDate('');
       }
     } catch (err: any) {
       console.error('Error loading record:', err);
@@ -230,10 +272,68 @@ function App() {
     }
   };
 
+  // ==================== LANDING PAGE VIEW ====================
+  if (view === 'landing') {
+    return (
+      <LandingPage
+        onLoginSuccess={handleLoginSuccess}
+        onGuestAccess={handleGuestAccess}
+      />
+    );
+  }
+
+  // ==================== APP VIEW ====================
   return (
     <div className="min-h-screen font-sans text-gray-800 flex justify-center">
       <div className="w-full max-w-7xl bg-white/85 p-4 md:p-8 backdrop-blur-md shadow-2xl min-h-screen">
         <div className="space-y-6">
+
+          {/* App Header Bar */}
+          <div className="app-header-bar no-print">
+            <div className="app-header-bar-left">
+              <svg className="app-header-bar-logo" viewBox="0 0 100 100" fill="none">
+                <circle cx="50" cy="50" r="48" fill="#16a34a" />
+                <circle cx="50" cy="50" r="42" fill="white" />
+                <circle cx="50" cy="50" r="38" fill="#16a34a" />
+                <polygon points="50,18 35,42 65,42" fill="white" />
+                <polygon points="50,30 30,55 70,55" fill="white" />
+                <polygon points="50,42 25,68 75,68" fill="white" />
+                <rect x="45" y="65" width="10" height="14" fill="white" rx="2" />
+              </svg>
+              <span className="app-header-bar-title">ARAUCO L-2</span>
+              <span className={`app-header-bar-badge ${isGuest ? 'app-header-bar-badge-guest' : 'app-header-bar-badge-tech'}`}>
+                {isGuest ? 'Invitado' : 'Técnico'}
+              </span>
+            </div>
+            <div className="app-header-bar-right">
+              {!isGuest && (
+                <button
+                  className="app-header-btn app-header-btn-password"
+                  onClick={() => setShowChangePassword(true)}
+                >
+                  <KeyRound size={14} />
+                  Contraseña
+                </button>
+              )}
+              {isGuest ? (
+                <button
+                  className="app-header-btn app-header-btn-exit"
+                  onClick={handleExit}
+                >
+                  <ArrowLeftCircle size={14} />
+                  Exit
+                </button>
+              ) : (
+                <button
+                  className="app-header-btn app-header-btn-logout"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={14} />
+                  Logout
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Historical Fetch Panel */}
           <div className="flex flex-col md:flex-row justify-between items-center bg-blue-50/90 p-4 rounded-lg border border-blue-200 gap-4 no-print shadow-sm">
@@ -274,14 +374,15 @@ function App() {
               <p className="text-sm text-gray-500">Digitalización de Ficha Técnica</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleReset}
-                disabled={false} // Always enabled
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
-              >
-                <RefreshCw size={18} />
-                Limpiar Formulario
-              </button>
+              {!isGuest && (
+                <button
+                  onClick={handleReset}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
+                >
+                  <RefreshCw size={18} />
+                  Limpiar Formulario
+                </button>
+              )}
               <button
                 onClick={handleExportPDF}
                 disabled={isExporting}
@@ -290,19 +391,21 @@ function App() {
                 <Download size={18} />
                 {isExporting ? 'Generando...' : 'Exportar PDF'}
               </button>
-              <button
-                onClick={handleSaveSupabase}
-                disabled={isSaving || !data.date || !data.technician}
-                className={`flex items-center gap-2 px-4 py-2 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${!data.date || !data.technician
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-                  }`}
-              >
-                <Save size={18} />
-                {isSaving ? 'Guardando...' : 'Guardar Inspección'}
-              </button>
+              {!isGuest && (
+                <button
+                  onClick={handleSaveSupabase}
+                  disabled={isSaving || !data.date || !data.technician}
+                  className={`flex items-center gap-2 px-4 py-2 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${!data.date || !data.technician
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700'
+                    }`}
+                >
+                  <Save size={18} />
+                  {isSaving ? 'Guardando...' : 'Guardar Inspección'}
+                </button>
+              )}
             </div>
-            {(!data.date || !data.technician) && (
+            {!isGuest && (!data.date || !data.technician) && (
               <p className="text-xs text-red-500 mt-1 text-right">Complete Fecha y Técnico para habilitar el guardado.</p>
             )}
           </div>
@@ -313,10 +416,10 @@ function App() {
               <h1 className="text-3xl font-bold uppercase tracking-wider">Inspección Horno de Cal Arauco L-2</h1>
             </div>
 
-            <KilnDiagram data={data} onChange={handleChange} />
+            <KilnDiagram data={data} onChange={handleChange} readOnly={isGuest} />
 
             <div className="mt-8">
-              <InspectionForm data={data} onChange={handleChange} />
+              <InspectionForm data={data} onChange={handleChange} readOnly={isGuest} />
             </div>
             <div className="mt-4 text-right">
               <p className="text-[10px] text-gray-400 italic">Created by Gilbert Retamal Silva</p>
@@ -325,6 +428,11 @@ function App() {
 
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </div>
   );
 }
