@@ -1,50 +1,31 @@
-# React + TypeScript + Vite
+🏭 Gestión y Control Térmico - Horno L-2
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+DEPARTAMENTO DE MANTENCIÓN HCE • PLANTA ARAUCO
 
-Currently, two official plugins are available:
+Aplicación web industrial diseñada para el monitoreo, registro y análisis de variables térmicas y ajustes mecánicos del Horno L-2. Este sistema reemplaza los registros manuales por una arquitectura digital segura y en la nube.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+📋 Características Principales
 
-## Expanding the ESLint configuration
+🔒 Seguridad y Roles: Control de acceso mediante autenticación corporativa en Supabase. Distinción entre perfil Técnico (edición/guardado) y perfil Invitado (solo lectura).
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+🌡️ Inspección Térmica: Formulario interactivo para registrar las temperaturas de los mantos (Andes/Pacífico), llantas y descansos de las Estaciones I, II, III y IV.
 
-- Configure the top-level `parserOptions` property like this:
+⚙️ Registro de Ajustes Mecánicos: Módulo especializado para el registro de movimientos milimétricos en descansos, con autogeneración de observaciones técnicas.
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+📈 Análisis Evolutivo (Dashboard): Gráficos de tendencias alimentados por la base de datos para la toma de decisiones predictivas.
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+📄 Exportación de Reportes: Generación automática de reportes técnicos en formato PDF listos para imprimir o enviar a jefaturas.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+📅 Trazabilidad Visual: Calendario interactivo que marca los días con inspecciones activas.
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+🚀 Tecnologías Utilizadas
+
+Frontend: React (Vite), Tailwind CSS, Lucide Icons.
+
+Backend & Base de Datos: Supabase (PostgreSQL), Row Level Security (RLS) para políticas de seguridad.
+
+Despliegue: Vercel / GitHub Pages.
+
+👨‍💻 Autor
+
+Created by Gilbert Retamal S. Ingeniería y Confiabilidad - Mantención HCE
