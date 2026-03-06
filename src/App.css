@@ -11,9 +11,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +24,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -39,4 +42,172 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* ==================== Confirm Dialog ==================== */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: confirmFadeIn 0.2s ease-out;
+}
+
+.confirm-overlay-exit {
+  animation: confirmFadeOut 0.2s ease-in forwards;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem 2.25rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  animation: confirmSlideIn 0.25s ease-out;
+}
+
+.confirm-dialog-exit {
+  animation: confirmSlideOut 0.2s ease-in forwards;
+}
+
+.confirm-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.confirm-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem;
+}
+
+.confirm-message {
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.confirm-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.confirm-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.confirm-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.confirm-btn-ok {
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+@keyframes confirmFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes confirmFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes confirmSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes confirmSlideOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+}
+
+/* ==================== Custom Sonner Toast Styles ==================== */
+[data-sonner-toaster] {
+  --normal-bg: white !important;
+  --normal-text: #1f2937 !important;
+  --normal-border: rgba(0, 0, 0, 0.06) !important;
+  font-family: inherit !important;
+}
+
+[data-sonner-toast] {
+  border-radius: 1rem !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+  padding: 1rem 1.25rem !important;
+  gap: 0.75rem !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  border-left: 4px solid #009A44 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-left: 4px solid #dc2626 !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-left: 4px solid #f59e0b !important;
+}
+
+[data-sonner-toast] [data-title] {
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+}
+
+[data-sonner-toast] [data-description] {
+  font-size: 0.825rem !important;
+  color: #6b7280 !important;
 }

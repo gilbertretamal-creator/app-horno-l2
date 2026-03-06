@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
 import { RecentInspections } from './components/RecentInspections';
@@ -7,6 +8,7 @@ import { TrendAnalysis } from './components/TrendAnalysis';
 import { CalendarPicker } from './components/CalendarPicker';
 import { LandingPage } from './components/LandingPage';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { showConfirm, useConfirmDialog } from './components/ConfirmDialog';
 import { InspectionData, initialData } from './types';
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
@@ -20,6 +22,7 @@ function App() {
   const [view, setView] = useState<AppView>('landing');
   const [isGuest, setIsGuest] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const confirmDialog = useConfirmDialog();
 
   const [data, setData] = useState<InspectionData>(initialData);
   const [isSaving, setIsSaving] = useState(false);
@@ -113,14 +116,22 @@ function App() {
     setData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleReset = () => {
-    if (window.confirm('¿Está seguro de limpiar el formulario? Se perderán los datos actuales y se volverá al estado inicial.')) {
+  const handleReset = async () => {
+    const confirmed = await showConfirm({
+      title: 'Limpiar Formulario',
+      message: '¿Está seguro de limpiar el formulario? Se perderán los datos actuales y se volverá al estado inicial.',
+      confirmText: 'Sí, limpiar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (confirmed) {
       setData(initialData);
       setSearchDate('');
       setIsFetching(false);
       setIsSaving(false);
       setIsExporting(false);
       localStorage.clear();
+      toast.success('Formulario limpiado correctamente.');
     }
   };
 
@@ -132,7 +143,7 @@ function App() {
     const success = await exportToPDF('report-container', filename);
     setIsExporting(false);
     if (!success) {
-      alert('Error al generar PDF.');
+      toast.error('Error al generar el PDF. Intente nuevamente.');
     }
   };
 
@@ -191,17 +202,19 @@ function App() {
 
         if (checkError) {
           console.error('Error checking existing record:', checkError);
-          alert('Error al verificar registros existentes.');
+          toast.error('Error al verificar registros existentes.');
           return;
         }
 
         if (existing && existing.length > 0) {
           existingId = existing[0].id;
-          const userChoice = window.confirm(
-            `Ya existe una inspección registrada para la fecha ${data.date}.\n\n` +
-            `Presione "Aceptar" para REEMPLAZAR el registro existente.\n` +
-            `Presione "Cancelar" para NO guardar.`
-          );
+          const userChoice = await showConfirm({
+            title: 'Registro Existente',
+            message: `Ya existe una inspección registrada para la fecha ${data.date}. ¿Desea reemplazar el registro existente?`,
+            confirmText: 'Reemplazar',
+            cancelText: 'Cancelar',
+            type: 'warning'
+          });
 
           if (!userChoice) {
             return;
@@ -228,14 +241,14 @@ function App() {
         localStorage.removeItem(STORAGE_KEY);
         fetchRecentRecords();
         setTrendRefreshKey(k => k + 1);
-        alert(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
+        toast.success(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
       } else {
         console.error('Supabase save error:', error);
-        alert('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
+        toast.error('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
       }
     } catch (err) {
       console.error('Unexpected error in handleSaveSupabase:', err);
-      alert(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+      toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
       setIsSaving(false);
     }
@@ -294,7 +307,7 @@ function App() {
       }
     } catch (err: any) {
       console.error('Error loading record:', err);
-      alert(`Error al cargar el registro: ${err.message || 'Error desconocido'}`);
+      toast.error(`Error al cargar el registro: ${err.message || 'Error desconocido'}`);
     }
   };
 
@@ -318,7 +331,7 @@ function App() {
       }
     } catch (err: any) {
       console.error('Error fetching data from Supabase:', err);
-      alert(`Error al consultar los datos: ${err.message || 'Error desconocido'}`);
+      toast.error(`Error al consultar los datos: ${err.message || 'Error desconocido'}`);
     } finally {
       setIsFetching(false);
     }
@@ -485,6 +498,21 @@ function App() {
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
       )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog}
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            fontFamily: 'inherit',
+          },
+        }}
+        richColors
+      />
     </div>
   );
 }
