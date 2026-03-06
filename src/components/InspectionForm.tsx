@@ -10,7 +10,9 @@ interface InspectionFormProps {
 export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, readOnly = false }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        onChange(name as keyof InspectionData, value);
+        // Normalize comma to dot for empuje (desplazamiento) fields
+        const normalizedValue = name.startsWith('empuje') ? value.replace(',', '.') : value;
+        onChange(name as keyof InspectionData, normalizedValue);
     };
 
 

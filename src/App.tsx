@@ -106,6 +106,10 @@ function App() {
   }, [data, isGuest]);
 
   const handleChange = (field: keyof InspectionData, value: string) => {
+    // Normalize comma to dot for numeric empuje (desplazamiento) fields
+    if (typeof field === 'string' && field.startsWith('empuje')) {
+      value = value.replace(',', '.');
+    }
     setData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -135,57 +139,105 @@ function App() {
   const handleSaveSupabase = async () => {
     setIsSaving(true);
 
-    const payload: Record<string, any> = {};
-    const exactMappings: Record<string, string> = {
-      date: 'fecha',
-      technician: 'tecnico',
-      feed: 'alimentacion',
-      rpm: 'rpm',
-      observations: 'observaciones',
-      innerI: 'temp_llanta_i',
-      innerII: 'temp_llanta_ii',
-      innerIII: 'temp_llanta_iii',
-      innerIV: 'temp_llanta_iv',
-      andesI: 'temp_manto_andes_i',
-      andesII: 'temp_manto_andes_ii',
-      andesIII: 'temp_manto_andes_iii',
-      andesIV: 'temp_manto_andes_iv',
-      pacificoI: 'temp_manto_pacifico_i',
-      pacificoII: 'temp_manto_pacifico_ii',
-      pacificoIII: 'temp_manto_pacifico_iii',
-      pacificoIV: 'temp_manto_pacifico_iv'
-    };
+    try {
+      const payload: Record<string, any> = {};
+      const exactMappings: Record<string, string> = {
+        date: 'fecha',
+        technician: 'tecnico',
+        feed: 'alimentacion',
+        rpm: 'rpm',
+        observations: 'observaciones',
+        innerI: 'temp_llanta_i',
+        innerII: 'temp_llanta_ii',
+        innerIII: 'temp_llanta_iii',
+        innerIV: 'temp_llanta_iv',
+        andesI: 'temp_manto_andes_i',
+        andesII: 'temp_manto_andes_ii',
+        andesIII: 'temp_manto_andes_iii',
+        andesIV: 'temp_manto_andes_iv',
+        pacificoI: 'temp_manto_pacifico_i',
+        pacificoII: 'temp_manto_pacifico_ii',
+        pacificoIII: 'temp_manto_pacifico_iii',
+        pacificoIV: 'temp_manto_pacifico_iv'
+      };
 
-    const textFields = ['date', 'technician', 'feed', 'rpm', 'observations'];
+      const textFields = ['date', 'technician', 'feed', 'rpm', 'observations'];
 
-    for (const [key, value] of Object.entries(data)) {
-      if (exactMappings[key]) {
-        if (textFields.includes(key)) {
-          payload[exactMappings[key]] = value;
-        } else {
-          payload[exactMappings[key]] = value === '' ? null : Number(value);
+      for (const [key, value] of Object.entries(data)) {
+        if (exactMappings[key]) {
+          if (textFields.includes(key)) {
+            payload[exactMappings[key]] = value;
+          } else {
+            payload[exactMappings[key]] = value === '' ? null : Number(value);
+          }
+        } else if (
+          key.startsWith('migration') ||
+          key.startsWith('temp') ||
+          key.startsWith('empuje')
+        ) {
+          const mappedKey = key.replace(/(I{1,3}|IV|V)(_[A-Z]+)?$/, (match) => '_' + match.toLowerCase());
+          payload[mappedKey] = value === '' ? null : Number(value);
         }
-      } else if (
-        key.startsWith('migration') ||
-        key.startsWith('temp') ||
-        key.startsWith('empuje')
-      ) {
-        const mappedKey = key.replace(/(I{1,3}|IV|V)(_[A-Z]+)?$/, (match) => '_' + match.toLowerCase());
-        payload[mappedKey] = value === '' ? null : Number(value);
       }
-    }
 
-    const { error } = await supabase.from('inspecciones').insert([payload]);
-    setIsSaving(false);
+      // Check if a record with the same date already exists
+      let existingId: number | null = null;
+      if (data.date) {
+        const { data: existing, error: checkError } = await supabase
+          .from('inspecciones')
+          .select('id')
+          .eq('fecha', data.date)
+          .limit(1);
 
-    if (!error) {
-      setData(initialData);
-      localStorage.removeItem(STORAGE_KEY);
-      fetchRecentRecords();
-      setTrendRefreshKey(k => k + 1);
-    } else {
-      console.error(error);
-      alert('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
+        if (checkError) {
+          console.error('Error checking existing record:', checkError);
+          alert('Error al verificar registros existentes.');
+          return;
+        }
+
+        if (existing && existing.length > 0) {
+          existingId = existing[0].id;
+          const userChoice = window.confirm(
+            `Ya existe una inspección registrada para la fecha ${data.date}.\n\n` +
+            `Presione "Aceptar" para REEMPLAZAR el registro existente.\n` +
+            `Presione "Cancelar" para NO guardar.`
+          );
+
+          if (!userChoice) {
+            return;
+          }
+        }
+      }
+
+      let error;
+      if (existingId !== null) {
+        // Replace existing record
+        const result = await supabase
+          .from('inspecciones')
+          .update(payload)
+          .eq('id', existingId);
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await supabase.from('inspecciones').insert([payload]);
+        error = result.error;
+      }
+
+      if (!error) {
+        setData(initialData);
+        localStorage.removeItem(STORAGE_KEY);
+        fetchRecentRecords();
+        setTrendRefreshKey(k => k + 1);
+        alert(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
+      } else {
+        console.error('Supabase save error:', error);
+        alert('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
+      }
+    } catch (err) {
+      console.error('Unexpected error in handleSaveSupabase:', err);
+      alert(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 

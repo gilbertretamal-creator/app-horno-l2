@@ -30,7 +30,9 @@ const Arrow = ({ x, y, direction, width }: { x: number, y: number, direction: 'l
 export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOnly = false }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        onChange(name as keyof InspectionData, value);
+        // Normalize comma to dot for empuje (desplazamiento) fields
+        const normalizedValue = name.startsWith('empuje') ? value.replace(',', '.') : value;
+        onChange(name as keyof InspectionData, normalizedValue);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
