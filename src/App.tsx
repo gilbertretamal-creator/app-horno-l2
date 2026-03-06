@@ -211,11 +211,11 @@ function App() {
 
       let error;
       if (existingId !== null) {
-        // Replace existing record
+        // Upsert: include the existing id so Supabase knows which row to replace
+        payload['id'] = existingId;
         const result = await supabase
           .from('inspecciones')
-          .update(payload)
-          .eq('id', existingId);
+          .upsert(payload, { onConflict: 'id' });
         error = result.error;
       } else {
         // Insert new record
