@@ -425,6 +425,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                         <g key={ab.pos}>
                                             <foreignObject x={ab.x} y={ab.y} width={boxW} height={boxH}>
                                                 <input
+                                                    className="diagram-input"
                                                     type="number"
                                                     step="0.01"
                                                     value={val}

@@ -302,6 +302,62 @@ export const exportToPDF = async (elementId: string, filename: string = 'Ficha_I
         });
 
         // ────────────────────────────────────────────
+        // 3c. Fix Textarea and SVG Inputs wrapping issues
+        // ────────────────────────────────────────────
+        // Replace <textarea> with a div to fix html2canvas single-line text wrapping bug
+        const origTextareas = element.querySelectorAll('textarea');
+        const cloneTextareas = clone.querySelectorAll('textarea');
+        cloneTextareas.forEach((ta, i) => {
+            const origTa = origTextareas[i] as HTMLTextAreaElement | undefined;
+            const div = document.createElement('div');
+            // use the actual value from the original element
+            div.textContent = origTa?.value || (ta as HTMLTextAreaElement).value || '';
+            div.style.width = '100%';
+            div.style.minHeight = '120px';
+            div.style.padding = '8px';
+            div.style.border = '1px solid #d1d5db';
+            div.style.borderRadius = '8px';
+            div.style.fontSize = '12px';
+            div.style.lineHeight = '1.5';
+            div.style.backgroundColor = '#f9fafb';
+            div.style.textAlign = 'left';
+            div.style.boxSizing = 'border-box';
+            div.style.whiteSpace = 'pre-wrap';      // Critical for multi-line
+            div.style.wordBreak = 'break-word';     // Critical to avoid overflow
+            div.style.overflowWrap = 'break-word';  // Critical to avoid overflow
+            ta.parentNode?.replaceChild(div, ta);
+        });
+
+        // Replace SVG inputs with pure divs because html2canvas clips <input> inside <foreignObject>
+        const origDiagramInputs = element.querySelectorAll('input.diagram-input');
+        const cloneDiagramInputs = clone.querySelectorAll('input.diagram-input');
+        cloneDiagramInputs.forEach((inp, i) => {
+            const origInp = origDiagramInputs[i] as HTMLInputElement | undefined;
+            const div = document.createElement('div');
+            div.textContent = origInp?.value || (inp as HTMLInputElement).value || '';
+            div.className = inp.className;
+
+            // Replicate inline styles mimicking the original input layout, relying on flex for perfect centering
+            div.style.width = '100%';
+            div.style.height = '100%';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'center';
+            div.style.fontSize = '10px';
+            div.style.fontWeight = 'bold';
+            div.style.boxSizing = 'border-box';
+
+            // Read inherited inline styles from the source input if any
+            if (origInp) {
+                div.style.color = origInp.style.color || '#000';
+                div.style.border = origInp.style.border || '2px solid #000';
+                div.style.backgroundColor = origInp.style.backgroundColor || '#ffffff';
+                if (origInp.style.borderRadius) div.style.borderRadius = origInp.style.borderRadius;
+            }
+            inp.parentNode?.replaceChild(div, inp);
+        });
+
+        // ────────────────────────────────────────────
         // 4. Force inline styles on the clone
         // ────────────────────────────────────────────
         applyInlineStyles(clone);
