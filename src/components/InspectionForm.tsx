@@ -84,7 +84,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(['I', 'II', 'III', 'IV'] as const).map((tire) => {
                     const fieldName = `migration${tire}` as keyof InspectionData;
-                    const value = data[fieldName];
+                    const value = data[fieldName] as string;
                     const numValue = parseFloat(value);
                     const isTooLow = !isNaN(numValue) && value.trim() !== '' && numValue < 10;
                     const isTooHigh = !isNaN(numValue) && value.trim() !== '' && numValue > 25;
@@ -129,7 +129,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {(['I', 'II', 'III', 'IV'] as const).map((tire) => {
                     const innerFieldName = `inner${tire}` as keyof InspectionData;
-                    const innerValue = data[innerFieldName];
+                    const innerValue = data[innerFieldName] as string;
 
                     return (
                         <div key={`temp_${tire}`} className="bg-gray-50 p-4 rounded border border-gray-200">
@@ -160,7 +160,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
                                             type="number"
                                             step="0.1"
                                             name={`andes${tire}`}
-                                            value={data[`andes${tire}` as keyof InspectionData]}
+                                            value={data[`andes${tire}` as keyof InspectionData] as string}
                                             readOnly
                                             tabIndex={-1}
                                             onChange={handleChange}
@@ -175,7 +175,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
                                             type="number"
                                             step="0.1"
                                             name={`pacifico${tire}`}
-                                            value={data[`pacifico${tire}` as keyof InspectionData]}
+                                            value={data[`pacifico${tire}` as keyof InspectionData] as string}
                                             readOnly
                                             tabIndex={-1}
                                             onChange={handleChange}
@@ -193,7 +193,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
                             <div className="grid grid-cols-2 gap-2">
                                 {(['TL', 'TR', 'BL', 'BR'] as const).map((pos) => {
                                     const fieldName = `temp${tire}_${pos}` as keyof InspectionData;
-                                    const value = data[fieldName];
+                                    const value = data[fieldName] as string;
                                     const labels: Record<string, string> = {
                                         'TL': 'Andes/Sur',
                                         'TR': 'Pac./Sur',
@@ -228,7 +228,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
                             <div className="grid grid-cols-2 gap-2">
                                 {(['TL', 'TR', 'BL', 'BR'] as const).map((pos) => {
                                     const fieldName = `empuje${tire}_${pos}` as keyof InspectionData;
-                                    const value = data[fieldName];
+                                    const value = data[fieldName] as string;
                                     const labels: Record<string, string> = {
                                         'TL': 'Andes/Sur',
                                         'TR': 'Pac./Sur',
