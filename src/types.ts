@@ -22,6 +22,7 @@ export const initialAjustes: AjustesMecanicos = {
 
 export interface InspectionData {
     date: string;
+    turno: 'Día' | 'Noche';
     technician: string;
     feed: string;
     rpm: string;
@@ -46,6 +47,7 @@ export interface InspectionData {
 
 export const initialData: InspectionData = {
     date: new Date().toISOString().split('T')[0],
+    turno: 'Día',
     technician: '',
     feed: '',
     rpm: '',

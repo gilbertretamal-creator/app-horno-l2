@@ -4,6 +4,7 @@ import { ChevronDown, Upload } from 'lucide-react';
 interface RecentRecord {
     id: number;
     fecha: string;
+    turno: string;
     tecnico: string;
 }
 
@@ -39,7 +40,7 @@ export const RecentInspections: React.FC<RecentInspectionsProps> = ({ records, i
                                 className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-blue-50 transition border-b border-gray-100 last:border-b-0 text-left"
                             >
                                 <div>
-                                    <span className="text-xs font-semibold text-gray-700">{rec.fecha || '—'}</span>
+                                    <span className="text-xs font-semibold text-gray-700">{rec.fecha ? `${rec.fecha} - Turno ${rec.turno || 'Día'}` : '—'}</span>
                                     <span className="text-xs text-gray-400 mx-2">|</span>
                                     <span className="text-xs text-gray-500">{rec.tecnico || '—'}</span>
                                 </div>

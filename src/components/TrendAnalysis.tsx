@@ -60,6 +60,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
             const pacKey = `temp_manto_pacifico_${stationLower}`;
             const mapped = rawData.map(r => ({
                 fecha: r.fecha || '—',
+                turno: r.turno || 'Día',
                 tecnico: r.tecnico || '—',
                 andes: r[andesKey] != null ? Number(r[andesKey]) : null,
                 pacifico: r[pacKey] != null ? Number(r[pacKey]) : null,
@@ -83,6 +84,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
         if (viewMode === 'llantas') {
             const mapped = rawData.map(r => ({
                 fecha: r.fecha || '—',
+                turno: r.turno || 'Día',
                 tecnico: r.tecnico || '—',
                 llantaI: r.temp_llanta_i != null ? Number(r.temp_llanta_i) : null,
                 llantaII: r.temp_llanta_ii != null ? Number(r.temp_llanta_ii) : null,
@@ -114,6 +116,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
         if (viewMode === 'migraciones') {
             const mapped = rawData.map(r => ({
                 fecha: r.fecha || '—',
+                turno: r.turno || 'Día',
                 tecnico: r.tecnico || '—',
                 migI: r.migration_i != null ? Number(r.migration_i) : null,
                 migII: r.migration_ii != null ? Number(r.migration_ii) : null,
@@ -150,6 +153,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
         const prefix = prefixMap[station];
         const mapped = rawData.map(r => ({
             fecha: r.fecha || '—',
+            turno: r.turno || 'Día',
             tecnico: r.tecnico || '—',
             andesSur: r[`${prefix}_tl`] != null ? Number(r[`${prefix}_tl`]) : null,
             pacSur: r[`${prefix}_tr`] != null ? Number(r[`${prefix}_tr`]) : null,
@@ -197,9 +201,10 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length > 0) {
             const tecnico = payload[0]?.payload?.tecnico || '—';
+            const turno = payload[0]?.payload?.turno || 'Día';
             return (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
-                    <p className="font-semibold text-gray-700 mb-1">{label}</p>
+                    <p className="font-semibold text-gray-700 mb-1">{label} - Turno {turno}</p>
                     <p className="text-gray-500 mb-2">Técnico: {tecnico}</p>
                     {payload.map((entry: any, i: number) => (
                         <p key={i} style={{ color: entry.color }}>

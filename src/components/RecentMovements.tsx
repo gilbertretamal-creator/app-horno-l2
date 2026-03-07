@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 interface MovementRecord {
     id: number;
     fecha: string;
+    turno: string;
     tecnico: string;
     ajustes_mecanicos: any;
 }
@@ -24,7 +25,7 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
         try {
             const { data: rows, error } = await supabase
                 .from('inspecciones')
-                .select('id, fecha, tecnico, ajustes_mecanicos')
+                .select('id, fecha, turno, tecnico, ajustes_mecanicos')
                 .not('ajustes_mecanicos', 'is', null)
                 .order('fecha', { ascending: false })
                 .limit(5);
@@ -96,7 +97,7 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
                                 className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-amber-50 transition border-b border-gray-100 last:border-b-0 text-left"
                             >
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-gray-700">{rec.fecha || '—'}</span>
+                                    <span className="text-xs font-semibold text-gray-700">{rec.fecha ? `${rec.fecha} - Turno ${rec.turno || 'Día'}` : '—'}</span>
                                     <span className="text-xs text-gray-400">|</span>
                                     <span className="text-xs text-gray-500">{rec.tecnico || '—'}</span>
                                 </div>

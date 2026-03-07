@@ -20,7 +20,7 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h2 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">Datos de Inspección</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">FECHA:</label>
                     <input
@@ -32,6 +32,19 @@ export const InspectionForm: React.FC<InspectionFormProps> = ({ data, onChange, 
                         autoComplete="off"
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                     />
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">TURNO:</label>
+                    <select
+                        name="turno"
+                        value={data.turno || 'Día'}
+                        onChange={(e) => onChange('turno', e.target.value)}
+                        disabled={readOnly}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
+                    >
+                        <option value="Día">Día</option>
+                        <option value="Noche">Noche</option>
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">TÉCNICO:</label>

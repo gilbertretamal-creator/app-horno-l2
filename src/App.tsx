@@ -32,7 +32,7 @@ function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [searchDate, setSearchDate] = useState<string>('');
-  const [recentRecords, setRecentRecords] = useState<{ id: number; fecha: string; tecnico: string }[]>([]);
+  const [recentRecords, setRecentRecords] = useState<{ id: number; fecha: string; turno: string; tecnico: string }[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [visibleStations, setVisibleStations] = useState<boolean[]>([false, false, false, false]);
@@ -100,7 +100,7 @@ function App() {
     try {
       const { data: rows, error } = await supabase
         .from('inspecciones')
-        .select('id, fecha, tecnico')
+        .select('id, fecha, turno, tecnico')
         .order('created_at', { ascending: false })
         .limit(5);
       if (!error && rows) {
@@ -242,6 +242,7 @@ function App() {
       payload['ajustes_mecanicos'] = data.ajustesMecanicos;
       const exactMappings: Record<string, string> = {
         date: 'fecha',
+        turno: 'turno',
         technician: 'tecnico',
         feed: 'alimentacion',
         rpm: 'rpm',
@@ -260,7 +261,7 @@ function App() {
         pacificoIV: 'temp_manto_pacifico_iv'
       };
 
-      const textFields = ['date', 'technician', 'feed', 'rpm', 'observations'];
+      const textFields = ['date', 'turno', 'technician', 'feed', 'rpm', 'observations'];
 
       for (const [key, value] of Object.entries(data)) {
         if (exactMappings[key]) {
@@ -286,6 +287,7 @@ function App() {
           .from('inspecciones')
           .select('id')
           .eq('fecha', data.date)
+          .eq('turno', data.turno || 'Día')
           .limit(1);
 
         if (checkError) {
@@ -298,7 +300,7 @@ function App() {
           existingId = existing[0].id;
           const userChoice = await showConfirm({
             title: 'Registro Existente',
-            message: `Ya existe una inspección registrada para la fecha ${data.date}. ¿Desea reemplazar el registro existente?`,
+            message: `Ya existe una inspección registrada para la fecha ${data.date} (Turno: ${data.turno || 'Día'}). ¿Desea reemplazar el registro existente?`,
             confirmText: 'Reemplazar',
             cancelText: 'Cancelar',
             type: 'warning'
@@ -344,6 +346,7 @@ function App() {
 
   const reverseMappings: Record<string, string> = {
     fecha: 'date',
+    turno: 'turno',
     tecnico: 'technician',
     alimentacion: 'feed',
     rpm: 'rpm',
