@@ -50,8 +50,8 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
     }, [isOpen, refreshKey, fetchTrends]);
 
     // Derive chart data and line config based on view + station
-    const { chartData, lines, delta, migracionAverages } = useMemo(() => {
-        if (rawData.length === 0) return { chartData: [], lines: [], delta: null };
+    const { chartData, lines, seriesAverages } = useMemo(() => {
+        if (rawData.length === 0) return { chartData: [], lines: [], seriesAverages: null };
 
         const stationLower = station.toLowerCase();
 
@@ -64,17 +64,19 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 andes: r[andesKey] != null ? Number(r[andesKey]) : null,
                 pacifico: r[pacKey] != null ? Number(r[pacKey]) : null,
             }));
-            const deltas = mapped
-                .filter(d => d.andes != null && d.pacifico != null)
-                .map(d => Math.abs(d.andes! - d.pacifico!));
-            const avgDelta = deltas.length > 0 ? Math.round((deltas.reduce((a, b) => a + b, 0) / deltas.length) * 10) / 10 : null;
+            const validAndes = mapped.map(d => d.andes).filter(v => v != null) as number[];
+            const validPac = mapped.map(d => d.pacifico).filter(v => v != null) as number[];
+            const averages = {
+                'Andes': validAndes.length > 0 ? (validAndes.reduce((a, b) => a + b, 0) / validAndes.length).toFixed(1) : null,
+                'Pacífico': validPac.length > 0 ? (validPac.reduce((a, b) => a + b, 0) / validPac.length).toFixed(1) : null,
+            };
             return {
                 chartData: mapped,
                 lines: [
                     { key: 'andes', name: `Manto Andes ${station}`, color: COLORS.blue },
                     { key: 'pacifico', name: `Manto Pacífico ${station}`, color: COLORS.red },
                 ],
-                delta: avgDelta,
+                seriesAverages: averages,
             };
         }
 
@@ -87,11 +89,16 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 llantaIII: r.temp_llanta_iii != null ? Number(r.temp_llanta_iii) : null,
                 llantaIV: r.temp_llanta_iv != null ? Number(r.temp_llanta_iv) : null,
             }));
-            const deltas = mapped.map(d => {
-                const vals = [d.llantaI, d.llantaII, d.llantaIII, d.llantaIV].filter(v => v != null) as number[];
-                return vals.length >= 2 ? Math.max(...vals) - Math.min(...vals) : null;
-            }).filter(v => v != null) as number[];
-            const avgDelta = deltas.length > 0 ? Math.round((deltas.reduce((a, b) => a + b, 0) / deltas.length) * 10) / 10 : null;
+            const cI = mapped.map(d => d.llantaI).filter(v => v != null) as number[];
+            const cII = mapped.map(d => d.llantaII).filter(v => v != null) as number[];
+            const cIII = mapped.map(d => d.llantaIII).filter(v => v != null) as number[];
+            const cIV = mapped.map(d => d.llantaIV).filter(v => v != null) as number[];
+            const averages = {
+                'I': cI.length > 0 ? (cI.reduce((a, b) => a + b, 0) / cI.length).toFixed(1) : null,
+                'II': cII.length > 0 ? (cII.reduce((a, b) => a + b, 0) / cII.length).toFixed(1) : null,
+                'III': cIII.length > 0 ? (cIII.reduce((a, b) => a + b, 0) / cIII.length).toFixed(1) : null,
+                'IV': cIV.length > 0 ? (cIV.reduce((a, b) => a + b, 0) / cIV.length).toFixed(1) : null,
+            };
             return {
                 chartData: mapped,
                 lines: [
@@ -100,7 +107,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     { key: 'llantaIII', name: 'Llanta III', color: COLORS.emerald },
                     { key: 'llantaIV', name: 'Llanta IV', color: COLORS.amber },
                 ],
-                delta: avgDelta,
+                seriesAverages: averages,
             };
         }
 
@@ -120,10 +127,10 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 IV: mapped.map(d => d.migIV).filter(v => v != null) as number[],
             };
             const averages = {
-                I: calcs.I.length > 0 ? Math.round((calcs.I.reduce((a, b) => a + b, 0) / calcs.I.length) * 10) / 10 : null,
-                II: calcs.II.length > 0 ? Math.round((calcs.II.reduce((a, b) => a + b, 0) / calcs.II.length) * 10) / 10 : null,
-                III: calcs.III.length > 0 ? Math.round((calcs.III.reduce((a, b) => a + b, 0) / calcs.III.length) * 10) / 10 : null,
-                IV: calcs.IV.length > 0 ? Math.round((calcs.IV.reduce((a, b) => a + b, 0) / calcs.IV.length) * 10) / 10 : null,
+                'I': calcs.I.length > 0 ? (calcs.I.reduce((a, b) => a + b, 0) / calcs.I.length).toFixed(1) : null,
+                'II': calcs.II.length > 0 ? (calcs.II.reduce((a, b) => a + b, 0) / calcs.II.length).toFixed(1) : null,
+                'III': calcs.III.length > 0 ? (calcs.III.reduce((a, b) => a + b, 0) / calcs.III.length).toFixed(1) : null,
+                'IV': calcs.IV.length > 0 ? (calcs.IV.reduce((a, b) => a + b, 0) / calcs.IV.length).toFixed(1) : null,
             };
             return {
                 chartData: mapped,
@@ -133,8 +140,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     { key: 'migIII', name: 'Migración III', color: COLORS.emerald },
                     { key: 'migIV', name: 'Migración IV', color: COLORS.amber },
                 ],
-                delta: null,
-                migracionAverages: averages
+                seriesAverages: averages
             };
         }
 
@@ -150,12 +156,17 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
             andesNorte: r[`${prefix}_bl`] != null ? Number(r[`${prefix}_bl`]) : null,
             pacNorte: r[`${prefix}_br`] != null ? Number(r[`${prefix}_br`]) : null,
         }));
-        const deltas = mapped.map(d => {
-            const pairs: [number | null, number | null][] = [[d.andesSur, d.pacSur], [d.andesNorte, d.pacNorte]];
-            const diffs = pairs.filter(([a, b]) => a != null && b != null).map(([a, b]) => Math.abs(a! - b!));
-            return diffs.length > 0 ? diffs.reduce((a, b) => a + b, 0) / diffs.length : null;
-        }).filter(v => v != null) as number[];
-        const avgDelta = deltas.length > 0 ? Math.round((deltas.reduce((a, b) => a + b, 0) / deltas.length) * 10) / 10 : null;
+        const cAS = mapped.map(d => d.andesSur).filter(v => v != null) as number[];
+        const cPS = mapped.map(d => d.pacSur).filter(v => v != null) as number[];
+        const cAN = mapped.map(d => d.andesNorte).filter(v => v != null) as number[];
+        const cPN = mapped.map(d => d.pacNorte).filter(v => v != null) as number[];
+
+        const averages = {
+            'A/Sur': cAS.length > 0 ? (cAS.reduce((a, b) => a + b, 0) / cAS.length).toFixed(1) : null,
+            'P/Sur': cPS.length > 0 ? (cPS.reduce((a, b) => a + b, 0) / cPS.length).toFixed(1) : null,
+            'A/Norte': cAN.length > 0 ? (cAN.reduce((a, b) => a + b, 0) / cAN.length).toFixed(1) : null,
+            'P/Norte': cPN.length > 0 ? (cPN.reduce((a, b) => a + b, 0) / cPN.length).toFixed(1) : null,
+        };
 
         return {
             chartData: mapped,
@@ -165,7 +176,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 { key: 'andesNorte', name: `Andes/Norte ${station}`, color: COLORS.emerald },
                 { key: 'pacNorte', name: `Pac./Norte ${station}`, color: COLORS.amber },
             ],
-            delta: avgDelta,
+            seriesAverages: averages,
         };
     }, [rawData, station, viewMode]);
 
@@ -259,18 +270,12 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                                 ))}
                             </>
                         )}
-                        {delta !== null && viewMode !== 'migraciones' && (
-                            <div className={`${viewMode !== 'llantas' ? 'ml-auto' : ''} flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1`}>
-                                <span className="text-xs font-semibold text-amber-700">Δ Promedio:</span>
-                                <span className="text-sm font-bold text-amber-800">{delta} °C</span>
-                            </div>
-                        )}
-                        {viewMode === 'migraciones' && migracionAverages && (
+                        {seriesAverages && (
                             <div className="ml-auto flex flex-wrap gap-2">
-                                {Object.entries(migracionAverages).map(([station, avg]) => avg !== null ? (
-                                    <div key={station} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1">
-                                        <span className="text-[10px] font-semibold text-blue-700">Prom. {station}:</span>
-                                        <span className="text-xs font-bold text-blue-800">{avg} mm</span>
+                                {Object.entries(seriesAverages).map(([label, avg]) => avg !== null ? (
+                                    <div key={label} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1">
+                                        <span className="text-[10px] font-semibold text-blue-700">Prom. {label}:</span>
+                                        <span className="text-xs font-bold text-blue-800">{avg} {viewMode === 'migraciones' ? 'mm' : '°C'}</span>
                                     </div>
                                 ) : null)}
                             </div>
