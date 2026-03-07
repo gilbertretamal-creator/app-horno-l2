@@ -6,7 +6,7 @@ import {
 import { supabase } from '../lib/supabaseClient';
 
 type Station = 'I' | 'II' | 'III' | 'IV';
-type ViewMode = 'mantos' | 'llantas' | 'descansos';
+type ViewMode = 'mantos' | 'llantas' | 'descansos' | 'migraciones';
 
 interface TrendAnalysisProps {
     refreshKey: number;
@@ -104,6 +104,32 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
             };
         }
 
+        if (viewMode === 'migraciones') {
+            const mapped = rawData.map(r => ({
+                fecha: r.fecha || '—',
+                tecnico: r.tecnico || '—',
+                migI: r.migration_i != null ? Number(r.migration_i) : null,
+                migII: r.migration_ii != null ? Number(r.migration_ii) : null,
+                migIII: r.migration_iii != null ? Number(r.migration_iii) : null,
+                migIV: r.migration_iv != null ? Number(r.migration_iv) : null,
+            }));
+            const deltas = mapped.map(d => {
+                const vals = [d.migI, d.migII, d.migIII, d.migIV].filter(v => v != null) as number[];
+                return vals.length >= 2 ? Math.max(...vals) - Math.min(...vals) : null;
+            }).filter(v => v != null) as number[];
+            const avgDelta = deltas.length > 0 ? Math.round((deltas.reduce((a, b) => a + b, 0) / deltas.length) * 10) / 10 : null;
+            return {
+                chartData: mapped,
+                lines: [
+                    { key: 'migI', name: 'Migración I', color: COLORS.blue },
+                    { key: 'migII', name: 'Migración II', color: COLORS.red },
+                    { key: 'migIII', name: 'Migración III', color: COLORS.emerald },
+                    { key: 'migIV', name: 'Migración IV', color: COLORS.amber },
+                ],
+                delta: avgDelta,
+            };
+        }
+
         // viewMode === 'descansos'
         // DB columns: temp_i_tl, temp_i_tr, temp_ii_tl, etc.
         const prefixMap: Record<Station, string> = { I: 'temp_i', II: 'temp_ii', III: 'temp_iii', IV: 'temp_iv' };
@@ -158,7 +184,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     <p className="text-gray-500 mb-2">Técnico: {tecnico}</p>
                     {payload.map((entry: any, i: number) => (
                         <p key={i} style={{ color: entry.color }}>
-                            {entry.name}: <span className="font-bold">{entry.value ?? '—'} °C</span>
+                            {entry.name}: <span className="font-bold">{entry.value ?? '—'} {viewMode === 'migraciones' ? 'mm' : '°C'}</span>
                         </p>
                     ))}
                 </div>
@@ -171,6 +197,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
         mantos: 'Mantos',
         llantas: 'Llantas',
         descansos: 'Descansos',
+        migraciones: 'Migraciones',
     };
 
     return (
@@ -191,7 +218,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     {/* View Mode Selector */}
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                         <span className="text-sm font-semibold text-gray-600">Vista:</span>
-                        {(['mantos', 'llantas', 'descansos'] as ViewMode[]).map(v => (
+                        {(['mantos', 'llantas', 'descansos', 'migraciones'] as ViewMode[]).map(v => (
                             <button
                                 key={v}
                                 onClick={() => setViewMode(v)}
@@ -207,7 +234,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
 
                     {/* Station Selector + Delta */}
                     <div className="flex flex-wrap items-center gap-3 mb-4">
-                        {viewMode !== 'llantas' && (
+                        {viewMode !== 'llantas' && viewMode !== 'migraciones' && (
                             <>
                                 <span className="text-sm font-semibold text-gray-600">Estación:</span>
                                 {(['I', 'II', 'III', 'IV'] as Station[]).map(s => (
@@ -225,9 +252,9 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                             </>
                         )}
                         {delta !== null && (
-                            <div className={`${viewMode !== 'llantas' ? 'ml-auto' : ''} flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1`}>
+                            <div className={`${viewMode !== 'llantas' && viewMode !== 'migraciones' ? 'ml-auto' : ''} flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1`}>
                                 <span className="text-xs font-semibold text-amber-700">Δ Promedio:</span>
-                                <span className="text-sm font-bold text-amber-800">{delta} °C</span>
+                                <span className="text-sm font-bold text-amber-800">{delta} {viewMode === 'migraciones' ? 'mm' : '°C'}</span>
                             </div>
                         )}
                     </div>
@@ -268,7 +295,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                                 />
                                 <YAxis
                                     tick={{ fontSize: 11 }}
-                                    label={{ value: '°C', position: 'insideLeft', offset: 10, style: { fontSize: 12 } }}
+                                    label={{ value: viewMode === 'migraciones' ? 'mm' : '°C', position: 'insideLeft', offset: 10, style: { fontSize: 12 } }}
                                 />
                                 <Tooltip content={<CustomTooltip />} />
                                 {lines.filter(line => visibleLines.has(line.key)).map(line => (
