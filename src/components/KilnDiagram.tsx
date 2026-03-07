@@ -1,10 +1,13 @@
 import React from 'react';
-import { InspectionData } from '../types';
+import { InspectionData, AjustesMecanicos, StationAdjustment } from '../types';
 
 interface KilnDiagramProps {
     data: InspectionData;
     onChange: (field: keyof InspectionData, value: string) => void;
     readOnly?: boolean;
+    ajustes: AjustesMecanicos;
+    visibleStations: boolean[];
+    onAjusteChange: (station: 'I' | 'II' | 'III' | 'IV', pos: keyof StationAdjustment, value: string) => void;
 }
 
 const Arrow = ({ x, y, direction, width }: { x: number, y: number, direction: 'left' | 'right', width: number }) => {
@@ -27,7 +30,7 @@ const Arrow = ({ x, y, direction, width }: { x: number, y: number, direction: 'l
     }
 };
 
-export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOnly = false }) => {
+export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOnly = false, ajustes, visibleStations, onAjusteChange }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         // Normalize comma to dot for empuje (desplazamiento) fields
@@ -116,7 +119,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
 
     return (
         <div className="w-full flex justify-center py-8 relative">
-            <svg viewBox="-20 -60 920 400" className="w-full max-w-5xl h-auto drop-shadow-xl overflow-visible">
+            <svg viewBox="-20 -100 920 480" className="w-full max-w-5xl h-auto drop-shadow-xl overflow-visible">
                 {/* Main Kiln Body - Gradient Orange */}
                 <defs>
                     <linearGradient id="kilnGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -186,7 +189,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.key}_TL`}
-                                    value={data[`${tire.key}_TL` as keyof InspectionData]}
+                                    value={data[`${tire.key}_TL` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -200,7 +203,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.key}_TR`}
-                                    value={data[`${tire.key}_TR` as keyof InspectionData]}
+                                    value={data[`${tire.key}_TR` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -214,7 +217,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.key}_BL`}
-                                    value={data[`${tire.key}_BL` as keyof InspectionData]}
+                                    value={data[`${tire.key}_BL` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -228,7 +231,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.key}_BR`}
-                                    value={data[`${tire.key}_BR` as keyof InspectionData]}
+                                    value={data[`${tire.key}_BR` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -243,7 +246,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={tire.innerKey}
-                                    value={data[tire.innerKey as keyof InspectionData]}
+                                    value={data[tire.innerKey as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -258,7 +261,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`andes${tire.label}`}
-                                    value={data[`andes${tire.label}` as keyof InspectionData]}
+                                    value={data[`andes${tire.label}` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -273,7 +276,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`pacifico${tire.label}`}
-                                    value={data[`pacifico${tire.label}` as keyof InspectionData]}
+                                    value={data[`pacifico${tire.label}` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -289,7 +292,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.empuje}_TL`}
-                                    value={data[`${tire.empuje}_TL` as keyof InspectionData]}
+                                    value={data[`${tire.empuje}_TL` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -304,7 +307,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.empuje}_TR`}
-                                    value={data[`${tire.empuje}_TR` as keyof InspectionData]}
+                                    value={data[`${tire.empuje}_TR` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -319,7 +322,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.empuje}_BL`}
-                                    value={data[`${tire.empuje}_BL` as keyof InspectionData]}
+                                    value={data[`${tire.empuje}_BL` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -334,7 +337,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                 <input
                                     type="text"
                                     name={`${tire.empuje}_BR`}
-                                    value={data[`${tire.empuje}_BR` as keyof InspectionData]}
+                                    value={data[`${tire.empuje}_BR` as keyof InspectionData] as string}
                                     onChange={handleChange}
                                     onKeyDown={handleKeyDown}
                                     readOnly={readOnly}
@@ -348,6 +351,122 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                             {/* Direction Arrows - Lifted/Dropped to avoid boxes */}
                             {topDir && <Arrow x={tire.x} y={-35} direction={topDir} width={90} />}
                             {botDir && <Arrow x={tire.x} y={300} direction={botDir} width={90} />}
+
+                            {/* Mechanical Adjustment Boxes - only when station toggle is ON */}
+                            {visibleStations[idx] && (() => {
+                                const stKey = tire.label as 'I' | 'II' | 'III' | 'IV';
+                                const st = ajustes[stKey];
+                                // TOP = SUR side, BOTTOM = NORTE side
+                                // LEFT = Andes, RIGHT = Pacífico
+                                // Red displacement arrows: centered at tire.x, width=90
+                                // Arrow spans from tire.x-45 to tire.x+45
+                                // Boxes flank the arrow HORIZONTALLY:
+                                //   Left (Andes) = to the left of the arrow
+                                //   Right (Pacífico) = to the right of the arrow
+                                const boxW = 45;
+                                const boxH = 24;
+                                const arrowHalfW = 45; // half of displacement arrow width
+                                const topArrowY = -35; // center Y of top displacement arrow
+                                const botArrowY = 300; // center Y of bottom displacement arrow
+
+                                const redArrowHalfH = 10; // offset to clear the red arrow body
+                                const adjBoxes: { pos: keyof StationAdjustment; x: number; y: number; isTop: boolean }[] = [
+                                    // TOP = SUR, placed vertically ABOVE the top displacement arrow
+                                    { pos: 'AS', x: tire.x - arrowHalfW - boxW, y: topArrowY - redArrowHalfH - boxH, isTop: true },   // Left = Andes/Sur
+                                    { pos: 'PS', x: tire.x + arrowHalfW, y: topArrowY - redArrowHalfH - boxH, isTop: true },   // Right = Pac./Sur
+                                    // BOTTOM = NORTE, placed vertically BELOW the bottom displacement arrow
+                                    { pos: 'AN', x: tire.x - arrowHalfW - boxW, y: botArrowY + redArrowHalfH, isTop: false },  // Left = Andes/Norte
+                                    { pos: 'PN', x: tire.x + arrowHalfW, y: botArrowY + redArrowHalfH, isTop: false },  // Right = Pac./Norte
+                                ];
+                                const arrowH = 18; // directional arrow height
+                                const arrowBodyW = 6; // body half-width
+                                const arrowHeadW = 10; // head half-width
+
+                                return adjBoxes.map(ab => {
+                                    const val = st[ab.pos];
+                                    const num = parseFloat(val);
+                                    const isPositive = !isNaN(num) && num > 0;
+                                    const isNegative = !isNaN(num) && num < 0;
+                                    const hasValue = isPositive || isNegative;
+                                    const arrowColor = isPositive ? '#009A44' : '#ea580c';
+                                    const bgColor = isPositive ? '#dcfce7' : isNegative ? '#ffedd5' : 'white';
+                                    const borderColor = isPositive ? '#009A44' : isNegative ? '#ea580c' : '#111';
+                                    const textColor = isPositive ? '#166534' : isNegative ? '#9a3412' : '#111';
+
+                                    const cx = ab.x + boxW / 2; // arrow center X
+
+                                    // Arrow direction: positive=inward, negative=outward
+                                    // Top: inward=DOWN, outward=UP
+                                    // Bottom: inward=UP, outward=DOWN
+                                    let arrowPointsDown: boolean;
+                                    if (ab.isTop) {
+                                        arrowPointsDown = isPositive;
+                                    } else {
+                                        arrowPointsDown = isNegative;
+                                    }
+
+                                    // Arrow exits from the box edge FACING the kiln:
+                                    // Down arrow → from bottom edge; Up arrow → from top edge
+                                    const arrowBaseY = arrowPointsDown
+                                        ? ab.y + boxH + 1
+                                        : ab.y - 1;
+
+                                    // Build arrow path (body + head shape)
+                                    let arrowPath = '';
+                                    if (arrowPointsDown) {
+                                        const tipY = arrowBaseY + arrowH;
+                                        arrowPath = `M ${cx - arrowBodyW} ${arrowBaseY} L ${cx - arrowBodyW} ${arrowBaseY + arrowH - 7} L ${cx - arrowHeadW} ${arrowBaseY + arrowH - 7} L ${cx} ${tipY} L ${cx + arrowHeadW} ${arrowBaseY + arrowH - 7} L ${cx + arrowBodyW} ${arrowBaseY + arrowH - 7} L ${cx + arrowBodyW} ${arrowBaseY} Z`;
+                                    } else {
+                                        const tipY = arrowBaseY - arrowH;
+                                        arrowPath = `M ${cx - arrowBodyW} ${arrowBaseY} L ${cx - arrowBodyW} ${arrowBaseY - arrowH + 7} L ${cx - arrowHeadW} ${arrowBaseY - arrowH + 7} L ${cx} ${tipY} L ${cx + arrowHeadW} ${arrowBaseY - arrowH + 7} L ${cx + arrowBodyW} ${arrowBaseY - arrowH + 7} L ${cx + arrowBodyW} ${arrowBaseY} Z`;
+                                    }
+
+                                    return (
+                                        <g key={ab.pos}>
+                                            <foreignObject x={ab.x} y={ab.y} width={boxW} height={boxH}>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={val}
+                                                    onChange={(e) => {
+                                                        let v = e.target.value.replace(',', '.');
+                                                        onAjusteChange(stKey, ab.pos, v);
+                                                    }}
+                                                    readOnly={readOnly}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        boxSizing: 'border-box',
+                                                        border: `2px solid ${borderColor}`,
+                                                        borderRadius: '2px',
+                                                        textAlign: 'center',
+                                                        fontSize: '10px',
+                                                        fontWeight: 700,
+                                                        outline: 'none',
+                                                        background: bgColor,
+                                                        color: textColor,
+                                                        padding: 0,
+                                                        MozAppearance: 'textfield' as any,
+                                                        WebkitAppearance: 'none' as any,
+                                                        appearance: 'none' as any,
+                                                    }}
+                                                    placeholder=""
+                                                    autoComplete="off"
+                                                />
+                                            </foreignObject>
+                                            {/* Directional arrow */}
+                                            {hasValue && (
+                                                <path
+                                                    d={arrowPath}
+                                                    fill={arrowColor}
+                                                    stroke="#000"
+                                                    strokeWidth="1"
+                                                />
+                                            )}
+                                        </g>
+                                    );
+                                });
+                            })()}
 
                         </g>
                     );

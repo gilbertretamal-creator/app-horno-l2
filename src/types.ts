@@ -1,3 +1,25 @@
+// Roller adjustment positions: AN=Andes Norte, AS=Andes Sur, PN=Pacífico Norte, PS=Pacífico Sur
+export interface StationAdjustment {
+    AN: string;
+    AS: string;
+    PN: string;
+    PS: string;
+}
+
+export interface AjustesMecanicos {
+    I: StationAdjustment;
+    II: StationAdjustment;
+    III: StationAdjustment;
+    IV: StationAdjustment;
+}
+
+export const initialAjustes: AjustesMecanicos = {
+    I: { AN: '', AS: '', PN: '', PS: '' },
+    II: { AN: '', AS: '', PN: '', PS: '' },
+    III: { AN: '', AS: '', PN: '', PS: '' },
+    IV: { AN: '', AS: '', PN: '', PS: '' },
+};
+
 export interface InspectionData {
     date: string;
     technician: string;
@@ -19,6 +41,7 @@ export interface InspectionData {
     empujeIII_TL: string; empujeIII_TR: string; empujeIII_BL: string; empujeIII_BR: string;
     empujeIV_TL: string; empujeIV_TR: string; empujeIV_BL: string; empujeIV_BR: string;
     observations: string;
+    ajustesMecanicos: AjustesMecanicos;
 }
 
 export const initialData: InspectionData = {
@@ -42,4 +65,6 @@ export const initialData: InspectionData = {
     empujeIII_TL: '', empujeIII_TR: '', empujeIII_BL: '', empujeIII_BR: '',
     empujeIV_TL: '', empujeIV_TR: '', empujeIV_BL: '', empujeIV_BR: '',
     observations: '',
+    ajustesMecanicos: { ...initialAjustes },
 };
+

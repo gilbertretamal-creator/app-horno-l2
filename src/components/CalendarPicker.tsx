@@ -19,6 +19,7 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
     const [viewYear, setViewYear] = useState(new Date().getFullYear());
     const [viewMonth, setViewMonth] = useState(new Date().getMonth());
     const [inspectionDates, setInspectionDates] = useState<Set<string>>(new Set());
+    const [adjustmentDates, setAdjustmentDates] = useState<Set<string>>(new Set());
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Fetch all distinct inspection dates from Supabase
@@ -26,21 +27,38 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
         try {
             const { data: rows, error } = await supabase
                 .from('inspecciones')
-                .select('fecha');
+                .select('fecha, ajustes_mecanicos');
             if (!error && rows) {
                 const dates = new Set<string>();
+                const adjDates = new Set<string>();
                 rows.forEach((r: any) => {
                     if (r.fecha) {
-                        // Normalize to YYYY-MM-DD
+                        let dateStr: string;
                         try {
                             const d = new Date(r.fecha);
-                            dates.add(d.toISOString().split('T')[0]);
+                            dateStr = d.toISOString().split('T')[0];
                         } catch {
-                            dates.add(String(r.fecha));
+                            dateStr = String(r.fecha);
+                        }
+                        dates.add(dateStr);
+                        // Check if this date has mechanical adjustments
+                        if (r.ajustes_mecanicos) {
+                            try {
+                                const ajustes = typeof r.ajustes_mecanicos === 'string'
+                                    ? JSON.parse(r.ajustes_mecanicos) : r.ajustes_mecanicos;
+                                const hasValues = Object.values(ajustes).some((station: any) =>
+                                    Object.values(station).some((v: any) => {
+                                        const num = parseFloat(String(v));
+                                        return !isNaN(num) && num !== 0;
+                                    })
+                                );
+                                if (hasValues) adjDates.add(dateStr);
+                            } catch { /* ignore parse errors */ }
                         }
                     }
                 });
                 setInspectionDates(dates);
+                setAdjustmentDates(adjDates);
             }
         } catch (e) {
             console.error('Error fetching inspection dates:', e);
@@ -184,6 +202,7 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
                             const dd = String(day).padStart(2, '0');
                             const dateStr = `${viewYear}-${mm}-${dd}`;
                             const hasInspection = inspectionDates.has(dateStr);
+                            const hasAdjustment = adjustmentDates.has(dateStr);
                             const isSelected = dateStr === value;
                             const isToday = dateStr === todayStr;
 
@@ -196,14 +215,16 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
                                         h-8 w-8 mx-auto flex items-center justify-center rounded-full text-xs font-medium transition-all
                                         ${isSelected
                                             ? 'bg-blue-600 text-white shadow-md'
-                                            : hasInspection
-                                                ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-400 font-bold hover:bg-blue-200'
-                                                : isToday
-                                                    ? 'bg-gray-100 text-gray-900 font-bold hover:bg-gray-200'
-                                                    : 'text-gray-700 hover:bg-gray-100'
+                                            : hasAdjustment
+                                                ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-500 font-bold hover:bg-amber-200'
+                                                : hasInspection
+                                                    ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-400 font-bold hover:bg-blue-200'
+                                                    : isToday
+                                                        ? 'bg-gray-100 text-gray-900 font-bold hover:bg-gray-200'
+                                                        : 'text-gray-700 hover:bg-gray-100'
                                         }
                                     `}
-                                    title={hasInspection ? 'Inspección registrada' : ''}
+                                    title={hasAdjustment ? 'Inspección con ajuste mecánico' : hasInspection ? 'Inspección registrada' : ''}
                                 >
                                     {day}
                                 </button>
@@ -216,6 +237,10 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
                         <span className="flex items-center gap-1">
                             <span className="inline-block w-3 h-3 rounded-full bg-blue-100 ring-2 ring-blue-400" />
                             Con inspección
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="inline-block w-3 h-3 rounded-full bg-amber-100 ring-2 ring-amber-500" />
+                            Con ajuste
                         </span>
                         <span className="flex items-center gap-1">
                             <span className="inline-block w-3 h-3 rounded-full bg-blue-600" />

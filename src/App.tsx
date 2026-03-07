@@ -1,15 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
 import { RecentInspections } from './components/RecentInspections';
+import { RecentMovements } from './components/RecentMovements';
 import { TrendAnalysis } from './components/TrendAnalysis';
 import { CalendarPicker } from './components/CalendarPicker';
 import { LandingPage } from './components/LandingPage';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { MovementAdjustments } from './components/MovementAdjustments';
 import { showConfirm, useConfirmDialog } from './components/ConfirmDialog';
-import { InspectionData, initialData } from './types';
+import { InspectionData, initialData, AjustesMecanicos, initialAjustes, StationAdjustment } from './types';
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
 import './components/LandingPage.css';
@@ -32,6 +34,25 @@ function App() {
   const [recentRecords, setRecentRecords] = useState<{ id: number; fecha: string; tecnico: string }[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
+  const [visibleStations, setVisibleStations] = useState<boolean[]>([false, false, false, false]);
+
+  const handleToggleStation = (idx: number) => {
+    setVisibleStations(prev => {
+      const next = [...prev];
+      next[idx] = !next[idx];
+      return next;
+    });
+  };
+
+  const handleAjusteChange = (station: 'I' | 'II' | 'III' | 'IV', pos: keyof StationAdjustment, value: string) => {
+    setData(prev => ({
+      ...prev,
+      ajustesMecanicos: {
+        ...prev.ajustesMecanicos,
+        [station]: { ...prev.ajustesMecanicos[station], [pos]: value }
+      }
+    }));
+  };
 
   // Check for existing session on mount
   useEffect(() => {
@@ -101,6 +122,70 @@ function App() {
     }
   }, [view, fetchRecentRecords]);
 
+  // Auto-generate structured observations from movement adjustments
+  const prevAjustesRef = useRef<string>(JSON.stringify(initialAjustes));
+  useEffect(() => {
+    const ajustes = data.ajustesMecanicos;
+    const ajustesStr = JSON.stringify(ajustes);
+
+    // Only run when ajustes actually changed
+    if (ajustesStr === prevAjustesRef.current) return;
+    prevAjustesRef.current = ajustesStr;
+
+    const stations = ['I', 'II', 'III', 'IV'] as const;
+    const lines: string[] = [];
+
+    for (const st of stations) {
+      // Polín Norte = AN (Andes/Norte) + PN (Pac./Norte)
+      const anVal = parseFloat(ajustes[st].AN);
+      const pnVal = parseFloat(ajustes[st].PN);
+      const norteHas = (!isNaN(anVal) && anVal !== 0) || (!isNaN(pnVal) && pnVal !== 0);
+      if (norteHas) {
+        const parts: string[] = [];
+        if (!isNaN(anVal) && anVal !== 0) {
+          parts.push(`${anVal > 0 ? 'ingresando' : 'retirando'} ${Math.abs(anVal)}mm lado Andes/Norte`);
+        }
+        if (!isNaN(pnVal) && pnVal !== 0) {
+          parts.push(`${pnVal > 0 ? 'ingresando' : 'retirando'} ${Math.abs(pnVal)}mm lado Pac./Norte`);
+        }
+        // Spanish grammar: 'y' → 'e' before words starting with 'i' (e.g. 'e ingresando')
+        const connector = parts.length === 2 && parts[1].startsWith('i') ? ' e ' : ' y ';
+        lines.push(`Se ajusta polín norte de estación ${st}, ${parts.join(connector)}.`);
+      }
+
+      // Polín Sur = AS (Andes/Sur) + PS (Pac./Sur)
+      const asVal = parseFloat(ajustes[st].AS);
+      const psVal = parseFloat(ajustes[st].PS);
+      const surHas = (!isNaN(asVal) && asVal !== 0) || (!isNaN(psVal) && psVal !== 0);
+      if (surHas) {
+        const parts: string[] = [];
+        if (!isNaN(asVal) && asVal !== 0) {
+          parts.push(`${asVal > 0 ? 'ingresando' : 'retirando'} ${Math.abs(asVal)}mm lado Andes/Sur`);
+        }
+        if (!isNaN(psVal) && psVal !== 0) {
+          parts.push(`${psVal > 0 ? 'ingresando' : 'retirando'} ${Math.abs(psVal)}mm lado Pac./Sur`);
+        }
+        const connector = parts.length === 2 && parts[1].startsWith('i') ? ' e ' : ' y ';
+        lines.push(`Se ajusta polín sur de estación ${st}, ${parts.join(connector)}.`);
+      }
+    }
+
+    const autoText = lines.length > 0
+      ? `AJUSTES MECÁNICOS:\n${lines.join('\n')}`
+      : '';
+
+    setData(prev => {
+      // Remove any existing auto-generated block (support both old and new markers)
+      let cleanObs = prev.observations
+        .replace(/\n?\[AJUSTES_INI\][\s\S]*?\[AJUSTES_FIN\]\n?/g, '')
+        .replace(/\n?AJUSTES MECÁNICOS:\n(?:Se ajusta polín (?:norte|sur) de estación (?:I|II|III|IV),.*\n?)+/g, '')
+        .trim();
+      const newObs = autoText ? (cleanObs ? `${cleanObs}\n\n${autoText}` : autoText) : cleanObs;
+      if (newObs === prev.observations) return prev;
+      return { ...prev, observations: newObs };
+    });
+  }, [data.ajustesMecanicos]);
+
   // Auto-save to local storage on change (only for authenticated users)
   useEffect(() => {
     if (!isGuest) {
@@ -152,6 +237,8 @@ function App() {
 
     try {
       const payload: Record<string, any> = {};
+      // Include ajustes_mecanicos as JSON
+      payload['ajustes_mecanicos'] = data.ajustesMecanicos;
       const exactMappings: Record<string, string> = {
         date: 'fecha',
         technician: 'tecnico',
@@ -276,8 +363,17 @@ function App() {
 
   const mapRowToFormData = (row: Record<string, any>) => {
     const mappedData: Record<string, any> = {};
+    let parsedAjustes: AjustesMecanicos = { ...initialAjustes };
     for (const [key, value] of Object.entries(row)) {
       if (key === 'id' || key === 'created_at') continue;
+      if (key === 'ajustes_mecanicos') {
+        if (value) {
+          try {
+            parsedAjustes = typeof value === 'string' ? JSON.parse(value) : value;
+          } catch { /* keep initial */ }
+        }
+        continue;
+      }
       const safeValue = value != null ? String(value) : '';
       if (reverseMappings[key]) {
         mappedData[reverseMappings[key]] = safeValue;
@@ -290,7 +386,7 @@ function App() {
     try {
       safeDate = new Date(safeDate).toISOString().split('T')[0];
     } catch { /* keep as-is */ }
-    return { ...initialData, ...mappedData, date: safeDate } as InspectionData;
+    return { ...initialData, ...mappedData, date: safeDate, ajustesMecanicos: parsedAjustes } as InspectionData;
   };
 
   const handleLoadById = async (id: number) => {
@@ -429,6 +525,9 @@ function App() {
             onLoad={handleLoadById}
           />
 
+          {/* Recent Movements */}
+          <RecentMovements refreshKey={trendRefreshKey} onLoad={handleLoadById} />
+
           {/* Trend Analysis Panel */}
           <TrendAnalysis refreshKey={trendRefreshKey} />
 
@@ -481,7 +580,24 @@ function App() {
               <h1 className="text-3xl font-bold uppercase tracking-wider">Inspección Horno de Cal Arauco L-2</h1>
             </div>
 
-            <KilnDiagram data={data} onChange={handleChange} readOnly={isGuest} />
+            <KilnDiagram
+              data={data}
+              onChange={handleChange}
+              readOnly={isGuest}
+              ajustes={data.ajustesMecanicos}
+              visibleStations={visibleStations}
+              onAjusteChange={handleAjusteChange}
+            />
+
+            {/* Movement Adjustments Toggle Panel */}
+            {!isGuest && (
+              <MovementAdjustments
+                ajustes={data.ajustesMecanicos}
+                visibleStations={visibleStations}
+                onToggleStation={handleToggleStation}
+                readOnly={isGuest}
+              />
+            )}
 
             <div className="mt-8">
               <InspectionForm data={data} onChange={handleChange} readOnly={isGuest} />
