@@ -15,6 +15,7 @@ import { InspectionData, initialData, AjustesMecanicos, initialAjustes, StationA
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
 import './components/LandingPage.css';
+import './App.css';
 
 const STORAGE_KEY = 'kiln_inspection_draft';
 
