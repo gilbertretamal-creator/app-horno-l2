@@ -50,7 +50,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
     }, [isOpen, refreshKey, fetchTrends]);
 
     // Derive chart data and line config based on view + station
-    const { chartData, lines, delta } = useMemo(() => {
+    const { chartData, lines, delta, migracionAverages } = useMemo(() => {
         if (rawData.length === 0) return { chartData: [], lines: [], delta: null };
 
         const stationLower = station.toLowerCase();
@@ -113,11 +113,18 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 migIII: r.migration_iii != null ? Number(r.migration_iii) : null,
                 migIV: r.migration_iv != null ? Number(r.migration_iv) : null,
             }));
-            const deltas = mapped.map(d => {
-                const vals = [d.migI, d.migII, d.migIII, d.migIV].filter(v => v != null) as number[];
-                return vals.length >= 2 ? Math.max(...vals) - Math.min(...vals) : null;
-            }).filter(v => v != null) as number[];
-            const avgDelta = deltas.length > 0 ? Math.round((deltas.reduce((a, b) => a + b, 0) / deltas.length) * 10) / 10 : null;
+            const calcs = {
+                I: mapped.map(d => d.migI).filter(v => v != null) as number[],
+                II: mapped.map(d => d.migII).filter(v => v != null) as number[],
+                III: mapped.map(d => d.migIII).filter(v => v != null) as number[],
+                IV: mapped.map(d => d.migIV).filter(v => v != null) as number[],
+            };
+            const averages = {
+                I: calcs.I.length > 0 ? Math.round((calcs.I.reduce((a, b) => a + b, 0) / calcs.I.length) * 10) / 10 : null,
+                II: calcs.II.length > 0 ? Math.round((calcs.II.reduce((a, b) => a + b, 0) / calcs.II.length) * 10) / 10 : null,
+                III: calcs.III.length > 0 ? Math.round((calcs.III.reduce((a, b) => a + b, 0) / calcs.III.length) * 10) / 10 : null,
+                IV: calcs.IV.length > 0 ? Math.round((calcs.IV.reduce((a, b) => a + b, 0) / calcs.IV.length) * 10) / 10 : null,
+            };
             return {
                 chartData: mapped,
                 lines: [
@@ -126,7 +133,8 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     { key: 'migIII', name: 'Migración III', color: COLORS.emerald },
                     { key: 'migIV', name: 'Migración IV', color: COLORS.amber },
                 ],
-                delta: avgDelta,
+                delta: null,
+                migracionAverages: averages
             };
         }
 
@@ -251,10 +259,20 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                                 ))}
                             </>
                         )}
-                        {delta !== null && (
-                            <div className={`${viewMode !== 'llantas' && viewMode !== 'migraciones' ? 'ml-auto' : ''} flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1`}>
+                        {delta !== null && viewMode !== 'migraciones' && (
+                            <div className={`${viewMode !== 'llantas' ? 'ml-auto' : ''} flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1`}>
                                 <span className="text-xs font-semibold text-amber-700">Δ Promedio:</span>
-                                <span className="text-sm font-bold text-amber-800">{delta} {viewMode === 'migraciones' ? 'mm' : '°C'}</span>
+                                <span className="text-sm font-bold text-amber-800">{delta} °C</span>
+                            </div>
+                        )}
+                        {viewMode === 'migraciones' && migracionAverages && (
+                            <div className="ml-auto flex flex-wrap gap-2">
+                                {Object.entries(migracionAverages).map(([station, avg]) => avg !== null ? (
+                                    <div key={station} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1">
+                                        <span className="text-[10px] font-semibold text-blue-700">Prom. {station}:</span>
+                                        <span className="text-xs font-bold text-blue-800">{avg} mm</span>
+                                    </div>
+                                ) : null)}
                             </div>
                         )}
                     </div>
