@@ -406,13 +406,26 @@ function App() {
 
   const mapRowToFormData = (row: Record<string, any>) => {
     const mappedData: Record<string, any> = {};
-    let parsedAjustes: AjustesMecanicos = { ...initialAjustes };
+    let parsedAjustes: AjustesMecanicos = {
+      I: { ...initialAjustes.I },
+      II: { ...initialAjustes.II },
+      III: { ...initialAjustes.III },
+      IV: { ...initialAjustes.IV }
+    };
     for (const [key, value] of Object.entries(row)) {
       if (key === 'id' || key === 'created_at') continue;
       if (key === 'ajustes_mecanicos') {
         if (value) {
           try {
-            parsedAjustes = typeof value === 'string' ? JSON.parse(value) : value;
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+            if (parsed && typeof parsed === 'object') {
+              parsedAjustes = {
+                I: { ...parsedAjustes.I, ...(parsed.I || {}) },
+                II: { ...parsedAjustes.II, ...(parsed.II || {}) },
+                III: { ...parsedAjustes.III, ...(parsed.III || {}) },
+                IV: { ...parsedAjustes.IV, ...(parsed.IV || {}) },
+              };
+            }
           } catch { /* keep initial */ }
         }
         continue;
