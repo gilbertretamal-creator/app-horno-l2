@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle } from 'lucide-react';
+import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle, Trash2 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
@@ -36,6 +36,7 @@ function App() {
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [visibleStations, setVisibleStations] = useState<boolean[]>([false, false, false, false]);
+  const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
 
   const handleToggleStation = (idx: number) => {
     setVisibleStations(prev => {
@@ -84,6 +85,7 @@ function App() {
     setIsGuest(false);
     setData(initialData);
     setSearchDate('');
+    setLoadedRecordId(null);
   };
 
   // Handle exit (guest)
@@ -92,6 +94,7 @@ function App() {
     setIsGuest(false);
     setData(initialData);
     setSearchDate('');
+    setLoadedRecordId(null);
   };
 
   // Fetch last 5 recent inspections from Supabase
@@ -216,6 +219,7 @@ function App() {
       setIsFetching(false);
       setIsSaving(false);
       setIsExporting(false);
+      setLoadedRecordId(null);
       localStorage.clear();
       toast.success('Formulario limpiado correctamente.');
     }
@@ -281,8 +285,8 @@ function App() {
       }
 
       // Check if a record with the same date already exists
-      let existingId: number | null = null;
-      if (data.date) {
+      let existingId: number | null = loadedRecordId;
+      if (!existingId && data.date) {
         const { data: existing, error: checkError } = await supabase
           .from('inspecciones')
           .select('id')
@@ -328,6 +332,7 @@ function App() {
 
       if (!error) {
         setData(initialData);
+        setLoadedRecordId(null);
         localStorage.removeItem(STORAGE_KEY);
         fetchRecentRecords();
         setTrendRefreshKey(k => k + 1);
@@ -341,6 +346,40 @@ function App() {
       toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!loadedRecordId) return;
+
+    const confirmed = await showConfirm({
+      title: 'Eliminar Inspección',
+      message: '¿Está seguro que desea eliminar permanentemente esta inspección? Esta acción no se puede deshacer.',
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      try {
+        const { error } = await supabase
+          .from('inspecciones')
+          .delete()
+          .eq('id', loadedRecordId);
+
+        if (error) throw error;
+
+        setData(initialData);
+        setSearchDate('');
+        setLoadedRecordId(null);
+        localStorage.removeItem(STORAGE_KEY);
+        fetchRecentRecords();
+        setTrendRefreshKey(k => k + 1);
+        toast.success('Inspección eliminada exitosamente.');
+      } catch (err: any) {
+        console.error('Error deleting record:', err);
+        toast.error(`Error al eliminar: ${err.message || 'Error desconocido'}`);
+      }
     }
   };
 
@@ -404,6 +443,7 @@ function App() {
       if (rows && rows.length > 0) {
         setData(mapRowToFormData(rows[0]));
         setSearchDate('');
+        setLoadedRecordId(id);
       }
     } catch (err: any) {
       console.error('Error loading record:', err);
@@ -426,8 +466,10 @@ function App() {
       if (error) throw error;
       if (results && results.length > 0) {
         setData(mapRowToFormData(results[0]));
+        setLoadedRecordId(results[0].id);
       } else {
         setData({ ...initialData, date: searchDate || initialData.date });
+        setLoadedRecordId(null);
       }
     } catch (err: any) {
       console.error('Error fetching data from Supabase:', err);
@@ -569,7 +611,16 @@ function App() {
                     }`}
                 >
                   <Save size={18} />
-                  {isSaving ? 'Guardando...' : 'Guardar Inspección'}
+                  {isSaving ? 'Guardando...' : (loadedRecordId !== null ? 'Guardar Cambios' : 'Guardar Inspección')}
+                </button>
+              )}
+              {!isGuest && loadedRecordId !== null && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
+                >
+                  <Trash2 size={18} />
+                  Eliminar Inspección
                 </button>
               )}
             </div>
