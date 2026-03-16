@@ -1,13 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- 1. Ícono de la pestaña del navegador (Reemplaza al de Vite) -->
+    <link rel="icon" type="image/png" href="/logo-192.png" />
+    
+    <!-- 2. Ícono obligatorio para dispositivos Apple (iOS/macOS) -->
+    <link rel="apple-touch-icon" href="/logo-192.png" />
+    
+    <!-- 3. Conexión directa con el Manifiesto PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- 4. Color de la barra de estado en móviles -->
+    <meta name="theme_color" content="#009A44" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>Horno L-2 | Mantención HCE</title>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Script principal de React/Vite -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
