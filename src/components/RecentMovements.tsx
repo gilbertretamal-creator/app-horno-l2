@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useQuery } from '@tanstack/react-query';
 
 interface MovementRecord {
     id: number;
@@ -17,12 +18,10 @@ interface RecentMovementsProps {
 
 export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, onLoad }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [records, setRecords] = useState<MovementRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
 
-    const fetchRecentMovements = useCallback(async (isMounted: () => boolean) => {
-        setIsLoading(true);
-        try {
+    const { data: records = [], isLoading, isError } = useQuery<MovementRecord[]>({
+        queryKey: ['inspecciones', 'movements', refreshKey],
+        queryFn: async () => {
             const { data: rows, error } = await supabase
                 .from('inspecciones')
                 .select('id, fecha, turno, tecnico, ajustes_mecanicos')
@@ -31,34 +30,23 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
                 .limit(5);
 
             if (error) throw error;
-            if (rows && isMounted()) {
-                // Filter records that actually have non-empty adjustment values
-                const filteredRows = rows.filter((row: any) => {
-                    if (!row.ajustes_mecanicos) return false;
-                    const ajustes = typeof row.ajustes_mecanicos === 'string'
-                        ? JSON.parse(row.ajustes_mecanicos)
-                        : row.ajustes_mecanicos;
-                    return Object.values(ajustes).some((station: any) =>
-                        Object.values(station).some((v: any) => {
-                            const num = parseFloat(String(v));
-                            return !isNaN(num) && num !== 0;
-                        })
-                    );
-                });
-                setRecords(filteredRows.slice(0, 5));
-            }
-        } catch (err) {
-            console.error('Error fetching recent movements:', err);
-        } finally {
-            if (isMounted()) setIsLoading(false);
-        }
-    }, []);
+            if (!rows) return [];
 
-    useEffect(() => {
-        let mounted = true;
-        fetchRecentMovements(() => mounted);
-        return () => { mounted = false; };
-    }, [fetchRecentMovements, refreshKey]);
+            // Filter records that actually have non-empty adjustment values
+            const filteredRows = rows.filter((row: any) => {
+                const ajustes = typeof row.ajustes_mecanicos === 'string'
+                    ? JSON.parse(row.ajustes_mecanicos)
+                    : row.ajustes_mecanicos;
+                return Object.values(ajustes).some((station: any) =>
+                    Object.values(station).some((v: any) => {
+                        const num = parseFloat(String(v));
+                        return !isNaN(num) && num !== 0;
+                    })
+                );
+            });
+            return filteredRows.slice(0, 5);
+        }
+    });
 
     const countStations = (ajustes: any): number => {
         if (!ajustes) return 0;
@@ -90,6 +78,8 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
                 <div className="absolute z-20 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
                     {isLoading ? (
                         <p className="text-xs text-gray-400 text-center py-3">Cargando...</p>
+                    ) : isError ? (
+                        <p className="text-xs text-red-500 text-center py-3">Error al cargar datos.</p>
                     ) : records.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-3">Sin ajustes mecánicos registrados.</p>
                     ) : (

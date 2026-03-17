@@ -11,10 +11,11 @@ interface RecentRecord {
 interface RecentInspectionsProps {
     records: RecentRecord[];
     isLoading: boolean;
+    isError?: boolean;
     onLoad: (id: number) => void;
 }
 
-export const RecentInspections: React.FC<RecentInspectionsProps> = ({ records, isLoading, onLoad }) => {
+export const RecentInspections: React.FC<RecentInspectionsProps> = ({ records, isLoading, isError, onLoad }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -30,6 +31,8 @@ export const RecentInspections: React.FC<RecentInspectionsProps> = ({ records, i
                 <div className="absolute z-20 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
                     {isLoading ? (
                         <p className="text-xs text-gray-400 text-center py-3">Cargando...</p>
+                    ) : isError ? (
+                        <p className="text-xs text-red-500 text-center py-3">Error al cargar registros recientes.</p>
                     ) : records.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-3">Sin registros.</p>
                     ) : (

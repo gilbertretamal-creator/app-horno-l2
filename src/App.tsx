@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle, Trash2, Table2 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { KilnDiagram } from './components/KilnDiagram';
@@ -19,6 +19,7 @@ import { addOfflineInspection, syncOfflineInspections, getOfflineInspections } f
 import { exportToCSV } from './utils/csvExport';
 import './components/LandingPage.css';
 import './App.css';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'kiln_inspection_draft';
 
@@ -35,8 +36,7 @@ function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [searchDate, setSearchDate] = useState<string>('');
-  const [recentRecords, setRecentRecords] = useState<{ id: number; fecha: string; turno: string; tecnico: string }[]>([]);
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+  const queryClient = useQueryClient();
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [visibleStations, setVisibleStations] = useState<boolean[]>([false, false, false, false]);
   const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
@@ -178,28 +178,9 @@ function App() {
 
     window.addEventListener('online', handleOnlineSync);
 
-    // ====== VISIBILITY API: WAKE-UP RECONNECTION ======
-    // When user returns to this tab after the browser sleeps it, silently
-    // revalidate the Supabase session. This forces the client to reconnect
-    // before the user tries to click anything, preventing a silent deadlock.
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible') return;
-      if (!isMounted || !isInitializedRef.current) return;
-      try {
-        // Lightweight ping — Supabase will auto-refresh the token if needed
-        // and emit TOKEN_REFRESHED or SIGNED_OUT via onAuthStateChange
-        await supabase.auth.getSession();
-      } catch (e) {
-        console.warn('Supabase wake-up reconnect failed:', e);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       isMounted = false;
       window.removeEventListener('online', handleOnlineSync);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       authListener.subscription.unsubscribe();
     };
   }, []);
@@ -238,36 +219,27 @@ function App() {
     setLoadedRecordCreatedAt(null);
   };
 
-  // Fetch last 5 recent inspections from Supabase
-  const fetchRecentRecords = useCallback(async (isMounted?: () => boolean) => {
-    setIsLoadingRecent(true);
-    try {
+  // Fetch last 5 recent inspections using React Query
+  const { data: recentRecords = [], isLoading: isLoadingRecent, isError: isErrorRecent } = useQuery({
+    queryKey: ['inspecciones', 'recent'],
+    queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('inspecciones')
         .select('id, fecha, turno, tecnico')
         .order('created_at', { ascending: false })
         .limit(5);
       if (error) throw error;
-      if (rows && (!isMounted || isMounted())) {
-        const sorted = (rows as any[]).sort((a: any, b: any) =>
-          (a.fecha || '').localeCompare(b.fecha || '')
-        );
-        setRecentRecords(sorted);
-      }
-    } catch (e) {
-      console.error('Error fetching recent records:', e);
-    } finally {
-      if (!isMounted || isMounted()) setIsLoadingRecent(false);
-    }
-  }, []);
+      if (!rows) return [];
+      return (rows as any[]).sort((a: any, b: any) =>
+        (a.fecha || '').localeCompare(b.fecha || '')
+      );
+    },
+    enabled: view === 'app' // Only fetch when in the main app view
+  });
 
-  // Auto-fetch on mount when in app view
-  useEffect(() => {
-    if (view !== 'app') return;
-    let mounted = true;
-    fetchRecentRecords(() => mounted);
-    return () => { mounted = false; };
-  }, [view, fetchRecentRecords]);
+  const fetchRecentRecords = () => {
+    queryClient.invalidateQueries({ queryKey: ['inspecciones', 'recent'] });
+  };
 
   // Auto-generate structured observations from movement adjustments
   const prevAjustesRef = useRef<string>(JSON.stringify(initialAjustes));
@@ -815,6 +787,7 @@ function App() {
           <RecentInspections
             records={recentRecords}
             isLoading={isLoadingRecent}
+            isError={isErrorRecent}
             onLoad={handleLoadById}
           />
 

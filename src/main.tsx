@@ -1,10 +1,21 @@
 import * as Sentry from '@sentry/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { registerSW } from 'virtual:pwa-register'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      retry: 2,
+      staleTime: 1000 * 60 * 5 // 5 minutes
+    }
+  }
+});
 
 // ===== SENTRY – inicializar ANTES del render del árbol React =====
 Sentry.init({
@@ -87,8 +98,10 @@ function CriticalErrorFallback() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<CriticalErrorFallback />} showDialog={false}>
-      <App />
-      <SpeedInsights />
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <SpeedInsights />
+      </QueryClientProvider>
     </Sentry.ErrorBoundary>
   </StrictMode>,
 )

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, TrendingUp } from 'lucide-react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
+import { useQuery } from '@tanstack/react-query';
 
 type Station = 'I' | 'II' | 'III' | 'IV';
 type ViewMode = 'mantos' | 'llantas' | 'descansos' | 'migraciones';
@@ -23,34 +24,21 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [station, setStation] = useState<Station>('I');
     const [viewMode, setViewMode] = useState<ViewMode>('mantos');
-    const [rawData, setRawData] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [visibleLines, setVisibleLines] = useState<Set<string>>(new Set());
 
-    const fetchTrends = useCallback(async (isMounted: () => boolean) => {
-        setIsLoading(true);
-        try {
+    const { data: rawData = [], isLoading, isError } = useQuery({
+        queryKey: ['inspecciones', 'trends', refreshKey],
+        queryFn: async () => {
             const { data: rows, error } = await supabase
                 .from('inspecciones')
                 .select('*')
                 .order('fecha', { ascending: true })
                 .limit(15);
-
             if (error) throw error;
-            if (isMounted()) setRawData(rows || []);
-        } catch (e) {
-            console.error('Error fetching trends:', e);
-        } finally {
-            if (isMounted()) setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        let mounted = true;
-        fetchTrends(() => mounted);
-        return () => { mounted = false; };
-    }, [isOpen, refreshKey, fetchTrends]);
+            return rows || [];
+        },
+        enabled: isOpen
+    });
 
     // Derive chart data and line config based on view + station
     const { chartData, lines, seriesAverages } = useMemo(() => {
@@ -311,6 +299,8 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                     {/* Chart */}
                     {isLoading ? (
                         <p className="text-center text-sm text-gray-400 py-8">Cargando datos...</p>
+                    ) : isError ? (
+                        <p className="text-center text-sm text-red-500 py-8">Error al cargar el análisis de tendencias.</p>
                     ) : chartData.length === 0 ? (
                         <p className="text-center text-sm text-gray-400 py-8">Sin datos disponibles.</p>
                     ) : (
