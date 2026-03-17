@@ -48,4 +48,16 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'pdf-vendor': ['jspdf', 'html2canvas'],
+          'supabase': ['@supabase/supabase-js'],
+          'react-vendor': ['react', 'react-dom']
+        }
+      }
+    }
+  }
 })

@@ -39,6 +39,8 @@ function App() {
   const [trendRefreshKey, setTrendRefreshKey] = useState(0);
   const [visibleStations, setVisibleStations] = useState<boolean[]>([false, false, false, false]);
   const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
+  const [loadedRecordCreatedAt, setLoadedRecordCreatedAt] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'tecnico' | 'supervisor' | null>(null);
 
   const handleToggleStation = (idx: number) => {
     setVisibleStations(prev => {
@@ -60,10 +62,41 @@ function App() {
 
   // Check for existing session on mount
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         setView('app');
         setIsGuest(false);
+        try {
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', session.user.id)
+            .single();
+          if (perfil) setUserRole(perfil.rol as any);
+        } catch (e) {
+          console.error("Error al obtener rol:", e);
+          setUserRole('tecnico');
+        }
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        setView('app');
+        setIsGuest(false);
+        try {
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', session.user.id)
+            .single();
+          if (perfil) setUserRole(perfil.rol as any);
+        } catch (e) {
+          console.error("Error al obtener rol:", e);
+          setUserRole('tecnico');
+        }
+      } else {
+        setUserRole(null);
       }
     });
 
@@ -87,6 +120,7 @@ function App() {
     window.addEventListener('online', handleOnlineSync);
     return () => {
       window.removeEventListener('online', handleOnlineSync);
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
@@ -110,6 +144,7 @@ function App() {
     setData(initialData);
     setSearchDate('');
     setLoadedRecordId(null);
+    setLoadedRecordCreatedAt(null);
   };
 
   // Handle exit (guest)
@@ -119,6 +154,7 @@ function App() {
     setData(initialData);
     setSearchDate('');
     setLoadedRecordId(null);
+    setLoadedRecordCreatedAt(null);
   };
 
   // Fetch last 5 recent inspections from Supabase
@@ -244,6 +280,7 @@ function App() {
       setIsSaving(false);
       setIsExporting(false);
       setLoadedRecordId(null);
+      setLoadedRecordCreatedAt(null);
       localStorage.clear();
       toast.success('Formulario limpiado correctamente.');
     }
@@ -313,7 +350,7 @@ function App() {
       if (!existingId && data.date) {
         const { data: existing, error: checkError } = await supabase
           .from('inspecciones')
-          .select('id')
+          .select('id, created_at')
           .eq('fecha', data.date)
           .eq('turno', data.turno || 'Día')
           .limit(1);
@@ -326,6 +363,16 @@ function App() {
 
         if (existing && existing.length > 0) {
           existingId = existing[0].id;
+          
+          const existingCreatedAt = existing[0].created_at;
+          const isExistingOlderThan24h = existingCreatedAt && (new Date().getTime() - new Date(existingCreatedAt).getTime()) > 24 * 60 * 60 * 1000;
+          
+          if (isExistingOlderThan24h && userRole !== 'supervisor') {
+             toast.error('Edición bloqueada: El registro supera las 24 horas y solo un supervisor puede reemplazarlo.');
+             setIsSaving(false);
+             return;
+          }
+
           const userChoice = await showConfirm({
             title: 'Registro Existente',
             message: `Ya existe una inspección registrada para la fecha ${data.date} (Turno: ${data.turno || 'Día'}). ¿Desea reemplazar el registro existente?`,
@@ -335,6 +382,7 @@ function App() {
           });
 
           if (!userChoice) {
+            setIsSaving(false);
             return;
           }
         }
@@ -376,6 +424,7 @@ function App() {
       if (!error) {
         setData(initialData);
         setLoadedRecordId(null);
+        setLoadedRecordCreatedAt(null);
         localStorage.removeItem(STORAGE_KEY);
         
         if (isOfflineSave) {
@@ -425,6 +474,7 @@ function App() {
         setData(initialData);
         setSearchDate('');
         setLoadedRecordId(null);
+        setLoadedRecordCreatedAt(null);
         localStorage.removeItem(STORAGE_KEY);
         fetchRecentRecords();
         setTrendRefreshKey(k => k + 1);
@@ -510,6 +560,7 @@ function App() {
         setData(mapRowToFormData(rows[0]));
         setSearchDate('');
         setLoadedRecordId(id);
+        setLoadedRecordCreatedAt(rows[0].created_at);
       }
     } catch (err: any) {
       console.error('Error loading record:', err);
@@ -533,9 +584,11 @@ function App() {
       if (results && results.length > 0) {
         setData(mapRowToFormData(results[0]));
         setLoadedRecordId(results[0].id);
+        setLoadedRecordCreatedAt(results[0].created_at);
       } else {
         setData({ ...initialData, date: searchDate || initialData.date });
         setLoadedRecordId(null);
+        setLoadedRecordCreatedAt(null);
       }
     } catch (err: any) {
       console.error('Error fetching data from Supabase:', err);
@@ -556,6 +609,15 @@ function App() {
   }
 
   // ==================== APP VIEW ====================
+  const isOlderThan24h = loadedRecordCreatedAt 
+    ? (new Date().getTime() - new Date(loadedRecordCreatedAt).getTime()) > 24 * 60 * 60 * 1000 
+    : false;
+  
+  const isEditBlocked = loadedRecordId !== null && isOlderThan24h && userRole !== 'supervisor';
+  const isSupervisorMode = loadedRecordId !== null && isOlderThan24h && userRole === 'supervisor';
+
+  const effectiveReadOnly = isGuest || isEditBlocked;
+
   return (
     <div className="min-h-screen font-sans text-gray-800 flex justify-center">
       <div className="w-full max-w-7xl bg-white/85 p-4 md:p-8 backdrop-blur-md shadow-2xl min-h-screen">
@@ -645,9 +707,25 @@ function App() {
 
           {/* Header acts as Control Panel */}
           <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-md border border-gray-200 gap-4 no-print">
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-800">Inspección Horno de Cal Arauco L-2</h1>
               <p className="text-sm text-gray-500">Digitalización de Ficha Técnica</p>
+              {isEditBlocked && (
+                <div className="mt-2 text-sm text-red-700 bg-red-50 px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-2 border border-red-200">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Edición bloqueada: El registro supera las 24 horas. Contacte a un supervisor.
+                </div>
+              )}
+              {isSupervisorMode && (
+                <div className="mt-2 text-sm text-purple-700 bg-purple-50 px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-2 border border-purple-200">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Modo Supervisor Activo (Editando historial antiguo)
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-3">
               {!isGuest && (
@@ -670,8 +748,8 @@ function App() {
               {!isGuest && (
                 <button
                   onClick={handleSaveSupabase}
-                  disabled={isSaving || !data.date || !data.technician}
-                  className={`flex items-center gap-2 px-4 py-2 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${!data.date || !data.technician
+                  disabled={isSaving || !data.date || !data.technician || isEditBlocked}
+                  className={`flex items-center gap-2 px-4 py-2 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${!data.date || !data.technician || isEditBlocked
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-green-600 hover:bg-green-700'
                     }`}
@@ -683,7 +761,8 @@ function App() {
               {!isGuest && loadedRecordId !== null && (
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
+                  disabled={isEditBlocked}
+                  className={`flex items-center gap-2 px-4 py-2 text-white rounded transition ${isEditBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
                 >
                   <Trash2 size={18} />
                   Eliminar Inspección
@@ -704,7 +783,7 @@ function App() {
             <KilnDiagram
               data={data}
               onChange={handleChange}
-              readOnly={isGuest}
+              readOnly={effectiveReadOnly}
               ajustes={data.ajustesMecanicos}
               visibleStations={visibleStations}
               onAjusteChange={handleAjusteChange}
@@ -716,12 +795,12 @@ function App() {
                 ajustes={data.ajustesMecanicos}
                 visibleStations={visibleStations}
                 onToggleStation={handleToggleStation}
-                readOnly={isGuest}
+                readOnly={effectiveReadOnly}
               />
             )}
 
             <div className="mt-8">
-              <InspectionForm data={data} onChange={handleChange} readOnly={isGuest} />
+              <InspectionForm data={data} onChange={handleChange} readOnly={effectiveReadOnly} />
             </div>
             <div className="mt-4 text-right">
               <p className="text-[10px] text-gray-400 italic">Created by Gilbert Retamal Silva</p>
