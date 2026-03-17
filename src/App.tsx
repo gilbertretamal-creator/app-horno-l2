@@ -10,10 +10,12 @@ import { CalendarPicker } from './components/CalendarPicker';
 import { LandingPage } from './components/LandingPage';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { MovementAdjustments } from './components/MovementAdjustments';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { showConfirm, useConfirmDialog } from './components/ConfirmDialog';
 import { InspectionData, initialData, AjustesMecanicos, initialAjustes, StationAdjustment } from './types';
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
+import { addOfflineInspection, syncOfflineInspections, getOfflineInspections } from './utils/offlineStore';
 import './components/LandingPage.css';
 import './App.css';
 
@@ -64,6 +66,28 @@ function App() {
         setIsGuest(false);
       }
     });
+
+    // Handle online sync automatically
+    const handleOnlineSync = async () => {
+      if (getOfflineInspections().length > 0) {
+        console.log("Restored connection, attempting to sync pending inspections...");
+        const result = await syncOfflineInspections();
+        if (result.success > 0) {
+          toast.success(`Se sincronizaron ${result.success} inspecciones pendientes.`);
+          fetchRecentRecords();
+          setTrendRefreshKey(k => k + 1);
+          window.dispatchEvent(new Event('offline-sync-complete'));
+        }
+        if (result.failed > 0) {
+          toast.error(`Falló la sincronización de ${result.failed} registros pendientes.`);
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnlineSync);
+    return () => {
+      window.removeEventListener('online', handleOnlineSync);
+    };
   }, []);
 
   // Handle login success
@@ -317,33 +341,62 @@ function App() {
       }
 
       let error;
-      if (existingId !== null) {
-        // Upsert: include the existing id so Supabase knows which row to replace
-        payload['id'] = existingId;
-        const result = await supabase
-          .from('inspecciones')
-          .upsert(payload, { onConflict: 'id' });
-        error = result.error;
+      let isOfflineSave = false;
+
+      if (!navigator.onLine) {
+         // Force offline save if we know there is no connection
+         addOfflineInspection(payload as any);
+         window.dispatchEvent(new Event('offline-save'));
+         isOfflineSave = true;
       } else {
-        // Insert new record
-        const result = await supabase.from('inspecciones').insert([payload]);
-        error = result.error;
+        if (existingId !== null) {
+          // Upsert: include the existing id so Supabase knows which row to replace
+          payload['id'] = existingId;
+          const result = await supabase
+            .from('inspecciones')
+            .upsert(payload, { onConflict: 'id' });
+          error = result.error;
+        } else {
+          // Insert new record
+          const result = await supabase.from('inspecciones').insert([payload]);
+          error = result.error;
+        }
+
+        // If fetch failed due to network error despite `navigator.onLine` being true
+        if (error && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+           console.warn('Network error detected during save. Falling back to offline storage.');
+           delete payload['id']; // Remove ID if we are queueing a new insert since offline sync only does inserts currently
+           addOfflineInspection(payload as any);
+           window.dispatchEvent(new Event('offline-save'));
+           error = null; // Clear error since we handled it
+           isOfflineSave = true;
+        }
       }
 
       if (!error) {
         setData(initialData);
         setLoadedRecordId(null);
         localStorage.removeItem(STORAGE_KEY);
-        fetchRecentRecords();
-        setTrendRefreshKey(k => k + 1);
-        toast.success(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
+        
+        if (isOfflineSave) {
+           toast.warning('Guardado localmente. Se sincronizará automáticamente al recuperar conexión.');
+        } else {
+           fetchRecentRecords();
+           setTrendRefreshKey(k => k + 1);
+           toast.success(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
+        }
       } else {
         console.error('Supabase save error:', error);
         toast.error('Hubo un problema guardando en Supabase. Revisa la consola para más detalles.');
       }
     } catch (err) {
       console.error('Unexpected error in handleSaveSupabase:', err);
-      toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+      // Fallback for unexpected fetch errors
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+         toast.warning('Error de red detectado. Verifica tu conexión.');
+      } else {
+         toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -685,6 +738,9 @@ function App() {
 
       {/* Confirm Dialog */}
       {confirmDialog}
+
+      {/* Offline Indicator */}
+      <OfflineIndicator />
 
       {/* Toast Notifications */}
       <Toaster
