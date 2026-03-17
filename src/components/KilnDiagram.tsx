@@ -33,9 +33,26 @@ const Arrow = ({ x, y, direction, width }: { x: number, y: number, direction: 'l
 export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOnly = false, ajustes, visibleStations, onAjusteChange }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        // Normalize comma to dot for empuje (desplazamiento) fields
-        const normalizedValue = name.startsWith('empuje') ? value.replace(',', '.') : value;
+        // Allow only numeric characters: digits, dot, comma, minus sign
+        const filtered = value.replace(/[^0-9.,-]/g, '');
+        // Normalize comma to dot for all numeric fields
+        const normalizedValue = filtered.replace(',', '.');
         onChange(name as keyof InspectionData, normalizedValue);
+    };
+
+    /** Combined: blocks non-numeric keys, then runs arrow-navigation logic. */
+    const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+        const editKeys = ['Backspace', 'Delete', 'Tab', 'Enter'];
+        const allowed = /^[0-9.,\-]$/;
+        // Block non-numeric chars (but allow control/nav/cut-copy-paste)
+        if (!editKeys.includes(e.key) && !navKeys.includes(e.key) &&
+            !allowed.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            return;
+        }
+        // Fall through to arrow-navigation handler
+        handleKeyDown(e);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -191,7 +208,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.key}_TL`}
                                     value={data[`${tire.key}_TL` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[2px] border-black text-center text-xs outline-none bg-white font-bold p-0"
                                     placeholder="..."
@@ -205,7 +222,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.key}_TR`}
                                     value={data[`${tire.key}_TR` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[2px] border-black text-center text-xs outline-none bg-white font-bold p-0"
                                     placeholder="..."
@@ -219,7 +236,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.key}_BL`}
                                     value={data[`${tire.key}_BL` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[2px] border-black text-center text-xs outline-none bg-white font-bold p-0"
                                     placeholder="..."
@@ -233,7 +250,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.key}_BR`}
                                     value={data[`${tire.key}_BR` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[2px] border-black text-center text-xs outline-none bg-white font-bold p-0"
                                     placeholder="..."
@@ -248,7 +265,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={tire.innerKey}
                                     value={data[tire.innerKey as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[3px] border-black text-center text-xs outline-none bg-white font-bold px-1"
                                     placeholder="..."
@@ -263,7 +280,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`andes${tire.label}`}
                                     value={data[`andes${tire.label}` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[3px] border-black text-center text-xs outline-none bg-white font-bold px-1"
                                     placeholder="..."
@@ -278,7 +295,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`pacifico${tire.label}`}
                                     value={data[`pacifico${tire.label}` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     className="diagram-input w-full h-full border-[3px] border-black text-center text-xs outline-none bg-white font-bold px-1"
                                     placeholder="..."
@@ -294,7 +311,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.empuje}_TL`}
                                     value={data[`${tire.empuje}_TL` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
                                     className="diagram-input w-full h-full border-[3px] border-blue-800 text-center text-xs outline-none bg-blue-50 font-bold p-0"
@@ -309,7 +326,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.empuje}_TR`}
                                     value={data[`${tire.empuje}_TR` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
                                     className="diagram-input w-full h-full border-[3px] border-blue-800 text-center text-xs outline-none bg-blue-50 font-bold p-0"
@@ -324,7 +341,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.empuje}_BL`}
                                     value={data[`${tire.empuje}_BL` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
                                     className="diagram-input w-full h-full border-[3px] border-blue-800 text-center text-xs outline-none bg-blue-50 font-bold p-0"
@@ -339,7 +356,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                                     name={`${tire.empuje}_BR`}
                                     value={data[`${tire.empuje}_BR` as keyof InspectionData] as string}
                                     onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={handleNumericKeyDown}
                                     readOnly={readOnly}
                                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
                                     className="diagram-input w-full h-full border-[3px] border-blue-800 text-center text-xs outline-none bg-blue-50 font-bold p-0"
