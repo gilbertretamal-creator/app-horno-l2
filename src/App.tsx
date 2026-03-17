@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle, Trash2 } from 'lucide-react';
+import { Download, Save, RefreshCw, Search, LogOut, KeyRound, ArrowLeftCircle, Trash2, Table2 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { KilnDiagram } from './components/KilnDiagram';
 import { InspectionForm } from './components/InspectionForm';
@@ -16,6 +16,7 @@ import { InspectionData, initialData, AjustesMecanicos, initialAjustes, StationA
 import { supabase } from './lib/supabaseClient';
 import { exportToPDF } from './utils/pdfExport';
 import { addOfflineInspection, syncOfflineInspections, getOfflineInspections } from './utils/offlineStore';
+import { exportToCSV } from './utils/csvExport';
 import './components/LandingPage.css';
 import './App.css';
 
@@ -338,6 +339,25 @@ function App() {
     setIsExporting(false);
     if (!success) {
       toast.error('Error al generar el PDF. Intente nuevamente.');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const { data: rows, error } = await supabase
+        .from('inspecciones')
+        .select('*')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      if (!rows || rows.length === 0) {
+        toast.info('No hay registros para exportar.');
+        return;
+      }
+      exportToCSV(rows);
+      toast.success(`${rows.length} registros exportados a CSV correctamente.`);
+    } catch (err: any) {
+      console.error('Error al exportar CSV:', err);
+      toast.error('No se pudo exportar el historial. Verifica tu conexión.');
     }
   };
 
@@ -798,6 +818,14 @@ function App() {
               >
                 <Download size={18} />
                 {isExporting ? 'Generando...' : 'Exportar PDF'}
+              </button>
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded transition"
+                title="Descarga el historial completo de inspecciones en formato Excel (CSV)"
+              >
+                <Table2 size={18} />
+                Exportar CSV
               </button>
               {!isGuest && (
                 <button
