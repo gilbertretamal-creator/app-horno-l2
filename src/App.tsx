@@ -153,6 +153,10 @@ function App() {
       }
 
       // SIGNED_IN: nueva sesión posterior (ej: login desde LandingPage)
+      // GUARD: If the incoming user is already the current user, skip all setState
+      // to prevent a re-render storm when Supabase re-fires SIGNED_IN on tab focus.
+      if (lastUserIdRef.current === session.user.id) return;
+
       try {
         const { data: perfil, error } = await supabase
           .from('perfiles')
@@ -161,6 +165,8 @@ function App() {
           .single();
         if (error && error.code !== 'PGRST116') throw error;
         if (isMounted) {
+          lastUserIdRef.current = session.user.id;
+          lastAccessTokenRef.current = session.access_token;
           setUserRole(perfil?.rol || 'tecnico');
           setView('app');
           setIsGuest(false);
