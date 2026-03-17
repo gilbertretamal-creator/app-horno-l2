@@ -10,9 +10,11 @@ import { registerSW } from 'virtual:pwa-register'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: true,  // React Query handles wake-up natively
+      refetchOnReconnect: true,
       retry: 2,
-      staleTime: 1000 * 60 * 5 // 5 minutes
+      staleTime: 1000 * 60,        // 1 minute – prevents burst on focus
+      gcTime: 1000 * 60 * 5,       // 5 minutes – keep cache warm in memory
     }
   }
 });

@@ -44,6 +44,9 @@ function App() {
   const [userRole, setUserRole] = useState<'tecnico' | 'supervisor' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isInitializedRef = useRef(false);
+  // ── Track last known session identity to avoid redundant setState ──
+  const lastUserIdRef = useRef<string | null>(null);
+  const lastAccessTokenRef = useRef<string | null>(null);
 
   const handleToggleStation = (idx: number) => {
     setVisibleStations(prev => {
@@ -86,6 +89,9 @@ function App() {
             setView('app');
             setIsGuest(false);
             setUserRole(perfil?.rol || 'tecnico');
+            // Record this session identity
+            lastUserIdRef.current = session.user.id;
+            lastAccessTokenRef.current = session.access_token;
           }
         } else {
           if (isMounted) {
@@ -127,8 +133,14 @@ function App() {
         return;
       }
 
-      // TOKEN_REFRESHED: session is still valid, just refresh the role silently
+      // TOKEN_REFRESHED: session is still valid but token rotated.
+      // GUARD: Only update state if the user identity actually changed.
+      // This prevents the re-render storm on every token rotation.
       if (event === 'TOKEN_REFRESHED') {
+        const sameUser = lastUserIdRef.current === session.user.id;
+        const sameToken = lastAccessTokenRef.current === session.access_token;
+        if (sameUser && sameToken) return; // Nothing changed – skip all setState
+        lastAccessTokenRef.current = session.access_token;
         try {
           const { data: perfil } = await supabase
             .from('perfiles')
