@@ -546,18 +546,24 @@ function App() {
 
     if (confirmed) {
       try {
-        const { error } = await supabase
+        const { data: deletedRow, error } = await supabase
           .from('inspecciones')
           .delete()
-          .eq('id', loadedRecordId);
+          .eq('id', loadedRecordId)
+          .select();
 
         if (error) throw error;
+        
+        if (!deletedRow || deletedRow.length === 0) {
+          throw new Error('No se pudo eliminar el registro. Es posible que no tengas los permisos necesarios (RLS).');
+        }
 
         setData(initialData);
         setSearchDate('');
         setLoadedRecordId(null);
         setLoadedRecordCreatedAt(null);
         localStorage.removeItem(STORAGE_KEY);
+        // Force refresh recent records
         fetchRecentRecords();
         setTrendRefreshKey(k => k + 1);
         toast.success('Inspección eliminada exitosamente.');
