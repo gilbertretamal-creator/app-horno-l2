@@ -41,7 +41,8 @@ function App() {
   const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
   const [loadedRecordCreatedAt, setLoadedRecordCreatedAt] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'tecnico' | 'supervisor' | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const isInitializedRef = useRef(false);
 
   const handleToggleStation = (idx: number) => {
     setVisibleStations(prev => {
@@ -61,75 +62,89 @@ function App() {
     }));
   };
 
-  // Check for existing session on mount
+  // ====== AUTH INITIALIZATION ======
   useEffect(() => {
     let isMounted = true;
 
-    const initializeAuth = async () => {
+    const initAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
 
-        if (session) {
-          setView('app');
-          setIsGuest(false);
-          try {
-            const { data: perfil, error: perfilError } = await supabase
-              .from('perfiles')
-              .select('rol')
-              .eq('id', session.user.id)
-              .single();
-            if (perfilError) throw perfilError;
-            if (isMounted && perfil) setUserRole(perfil.rol as any);
-          } catch (e) {
-            console.error("Error al obtener rol:", e);
-            if (isMounted) setUserRole('tecnico'); // Asignar por defecto si falla
+        if (session && session.user) {
+          const { data: perfil, error: perfilError } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', session.user.id)
+            .single();
+
+          // PGRST116 = row not found (user exists but no profile yet)
+          if (perfilError && perfilError.code !== 'PGRST116') throw perfilError;
+
+          if (isMounted) {
+            setView('app');
+            setIsGuest(false);
+            setUserRole(perfil?.rol || 'tecnico');
+          }
+        } else {
+          if (isMounted) {
+            setView('landing');
+            setUserRole(null);
           }
         }
-      } catch (err) {
-        console.error("Auth init error, logging out:", err);
-        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('Error crítico de Auth:', error);
         if (isMounted) {
           setView('landing');
-          setIsGuest(false);
           setUserRole(null);
         }
       } finally {
-        if (isMounted) setIsInitializing(false);
+        if (isMounted) {
+          isInitializedRef.current = true;
+          setIsLoading(false); // LIBERA EL LOADER
+        }
       }
     };
 
-    initializeAuth();
+    initAuth();
 
+    // Listener reactive: ONLY handles changes AFTER initialization
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Skip the initial INITIAL_SESSION event to avoid race condition
+      if (!isInitializedRef.current) return;
+
       if (!session) {
         if (isMounted) {
           setUserRole(null);
           setView('landing');
+          setIsGuest(false);
         }
         return;
       }
 
+      // Nueva sesión posterior (ej: login desde LandingPage)
       try {
-        setView('app');
-        setIsGuest(false);
         const { data: perfil, error } = await supabase
           .from('perfiles')
           .select('rol')
           .eq('id', session.user.id)
           .single();
-        if (error) throw error;
-        if (isMounted && perfil) setUserRole(perfil.rol as any);
+        if (error && error.code !== 'PGRST116') throw error;
+        if (isMounted) {
+          setUserRole(perfil?.rol || 'tecnico');
+          setView('app');
+          setIsGuest(false);
+        }
       } catch (e) {
-        console.error("Error al obtener rol en onAuthStateChange:", e);
+        console.error('Error al obtener rol en onAuthStateChange:', e);
         if (isMounted) setUserRole('tecnico');
       }
     });
 
-    // Handle online sync automatically
+    // ====== ONLINE SYNC ======
     const handleOnlineSync = async () => {
       if (getOfflineInspections().length > 0) {
-        console.log("Restored connection, attempting to sync pending inspections...");
+        console.log('Restored connection, attempting to sync pending inspections...');
         const result = await syncOfflineInspections();
         if (result.success > 0) {
           toast.success(`Se sincronizaron ${result.success} inspecciones pendientes.`);
@@ -145,10 +160,12 @@ function App() {
 
     window.addEventListener('online', handleOnlineSync);
     return () => {
+      isMounted = false;
       window.removeEventListener('online', handleOnlineSync);
       authListener.subscription.unsubscribe();
     };
   }, []);
+
 
   // Handle login success
   const handleLoginSuccess = () => {
@@ -389,14 +406,14 @@ function App() {
 
         if (existing && existing.length > 0) {
           existingId = existing[0].id;
-          
+
           const existingCreatedAt = existing[0].created_at;
           const isExistingOlderThan24h = existingCreatedAt && (new Date().getTime() - new Date(existingCreatedAt).getTime()) > 24 * 60 * 60 * 1000;
-          
+
           if (isExistingOlderThan24h && userRole !== 'supervisor') {
-             toast.error('Edición bloqueada: El registro supera las 24 horas y solo un supervisor puede reemplazarlo.');
-             setIsSaving(false);
-             return;
+            toast.error('Edición bloqueada: El registro supera las 24 horas y solo un supervisor puede reemplazarlo.');
+            setIsSaving(false);
+            return;
           }
 
           const userChoice = await showConfirm({
@@ -418,10 +435,10 @@ function App() {
       let isOfflineSave = false;
 
       if (!navigator.onLine) {
-         // Force offline save if we know there is no connection
-         addOfflineInspection(payload as any);
-         window.dispatchEvent(new Event('offline-save'));
-         isOfflineSave = true;
+        // Force offline save if we know there is no connection
+        addOfflineInspection(payload as any);
+        window.dispatchEvent(new Event('offline-save'));
+        isOfflineSave = true;
       } else {
         if (existingId !== null) {
           // Upsert: include the existing id so Supabase knows which row to replace
@@ -438,12 +455,12 @@ function App() {
 
         // If fetch failed due to network error despite `navigator.onLine` being true
         if (error && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
-           console.warn('Network error detected during save. Falling back to offline storage.');
-           delete payload['id']; // Remove ID if we are queueing a new insert since offline sync only does inserts currently
-           addOfflineInspection(payload as any);
-           window.dispatchEvent(new Event('offline-save'));
-           error = null; // Clear error since we handled it
-           isOfflineSave = true;
+          console.warn('Network error detected during save. Falling back to offline storage.');
+          delete payload['id']; // Remove ID if we are queueing a new insert since offline sync only does inserts currently
+          addOfflineInspection(payload as any);
+          window.dispatchEvent(new Event('offline-save'));
+          error = null; // Clear error since we handled it
+          isOfflineSave = true;
         }
       }
 
@@ -452,13 +469,13 @@ function App() {
         setLoadedRecordId(null);
         setLoadedRecordCreatedAt(null);
         localStorage.removeItem(STORAGE_KEY);
-        
+
         if (isOfflineSave) {
-           toast.warning('Guardado localmente. Se sincronizará automáticamente al recuperar conexión.');
+          toast.warning('Guardado localmente. Se sincronizará automáticamente al recuperar conexión.');
         } else {
-           fetchRecentRecords();
-           setTrendRefreshKey(k => k + 1);
-           toast.success(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
+          fetchRecentRecords();
+          setTrendRefreshKey(k => k + 1);
+          toast.success(existingId !== null ? 'Inspección reemplazada exitosamente.' : 'Inspección guardada exitosamente.');
         }
       } else {
         console.error('Supabase save error:', error);
@@ -468,9 +485,9 @@ function App() {
       console.error('Unexpected error in handleSaveSupabase:', err);
       // Fallback for unexpected fetch errors
       if (err instanceof TypeError && err.message.includes('fetch')) {
-         toast.warning('Error de red detectado. Verifica tu conexión.');
+        toast.warning('Error de red detectado. Verifica tu conexión.');
       } else {
-         toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+        toast.error(`Error inesperado al guardar: ${err instanceof Error ? err.message : 'Error desconocido'}`);
       }
     } finally {
       setIsSaving(false);
@@ -624,7 +641,9 @@ function App() {
     }
   };
 
-  if (isInitializing) {
+  // ==================== RENDER GATE ====================
+  // 1. Loading: block all rendering until auth is fully resolved
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-800">
         <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -633,7 +652,7 @@ function App() {
     );
   }
 
-  // ==================== LANDING PAGE VIEW ====================
+  // 2. Not authenticated → Landing Page
   if (view === 'landing') {
     return (
       <LandingPage
@@ -644,10 +663,10 @@ function App() {
   }
 
   // ==================== APP VIEW ====================
-  const isOlderThan24h = loadedRecordCreatedAt 
-    ? (new Date().getTime() - new Date(loadedRecordCreatedAt).getTime()) > 24 * 60 * 60 * 1000 
+  const isOlderThan24h = loadedRecordCreatedAt
+    ? (new Date().getTime() - new Date(loadedRecordCreatedAt).getTime()) > 24 * 60 * 60 * 1000
     : false;
-  
+
   const isEditBlocked = loadedRecordId !== null && isOlderThan24h && userRole !== 'supervisor';
   const isSupervisorMode = loadedRecordId !== null && isOlderThan24h && userRole === 'supervisor';
 
@@ -748,7 +767,7 @@ function App() {
               {isEditBlocked && (
                 <div className="mt-2 text-sm text-red-700 bg-red-50 px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-2 border border-red-200">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   Edición bloqueada: El registro supera las 24 horas. Contacte a un supervisor.
                 </div>
@@ -756,7 +775,7 @@ function App() {
               {isSupervisorMode && (
                 <div className="mt-2 text-sm text-purple-700 bg-purple-50 px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-2 border border-purple-200">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   Modo Supervisor Activo (Editando historial antiguo)
                 </div>
