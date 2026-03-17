@@ -110,20 +110,37 @@ function App() {
     initAuth();
 
     // Listener reactive: ONLY handles changes AFTER initialization
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // Skip the initial INITIAL_SESSION event to avoid race condition
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip the initial INITIAL_SESSION event to avoid race condition with initAuth
       if (!isInitializedRef.current) return;
 
-      if (!session) {
+      // Handle token expiry / forced logout cleanly
+      if (event === 'SIGNED_OUT' || !session) {
         if (isMounted) {
           setUserRole(null);
           setView('landing');
           setIsGuest(false);
+          setData(initialData);
+          setLoadedRecordId(null);
+          setLoadedRecordCreatedAt(null);
         }
         return;
       }
 
-      // Nueva sesión posterior (ej: login desde LandingPage)
+      // TOKEN_REFRESHED: session is still valid, just refresh the role silently
+      if (event === 'TOKEN_REFRESHED') {
+        try {
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('rol')
+            .eq('id', session.user.id)
+            .single();
+          if (isMounted && perfil) setUserRole(perfil.rol as any);
+        } catch { /* keep existing role */ }
+        return;
+      }
+
+      // SIGNED_IN: nueva sesión posterior (ej: login desde LandingPage)
       try {
         const { data: perfil, error } = await supabase
           .from('perfiles')
@@ -202,7 +219,7 @@ function App() {
   };
 
   // Fetch last 5 recent inspections from Supabase
-  const fetchRecentRecords = useCallback(async () => {
+  const fetchRecentRecords = useCallback(async (isMounted?: () => boolean) => {
     setIsLoadingRecent(true);
     try {
       const { data: rows, error } = await supabase
@@ -210,24 +227,26 @@ function App() {
         .select('id, fecha, turno, tecnico')
         .order('created_at', { ascending: false })
         .limit(5);
-      if (!error && rows) {
-        const sorted = (rows as any[]).sort((a: any, b: any) => {
-          return (a.fecha || '').localeCompare(b.fecha || '');
-        });
+      if (error) throw error;
+      if (rows && (!isMounted || isMounted())) {
+        const sorted = (rows as any[]).sort((a: any, b: any) =>
+          (a.fecha || '').localeCompare(b.fecha || '')
+        );
         setRecentRecords(sorted);
       }
     } catch (e) {
       console.error('Error fetching recent records:', e);
     } finally {
-      setIsLoadingRecent(false);
+      if (!isMounted || isMounted()) setIsLoadingRecent(false);
     }
   }, []);
 
   // Auto-fetch on mount when in app view
   useEffect(() => {
-    if (view === 'app') {
-      fetchRecentRecords();
-    }
+    if (view !== 'app') return;
+    let mounted = true;
+    fetchRecentRecords(() => mounted);
+    return () => { mounted = false; };
   }, [view, fetchRecentRecords]);
 
   // Auto-generate structured observations from movement adjustments

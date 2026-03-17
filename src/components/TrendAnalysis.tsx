@@ -27,7 +27,7 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [visibleLines, setVisibleLines] = useState<Set<string>>(new Set());
 
-    const fetchTrends = useCallback(async () => {
+    const fetchTrends = useCallback(async (isMounted: () => boolean) => {
         setIsLoading(true);
         try {
             const { data: rows, error } = await supabase
@@ -37,16 +37,19 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ refreshKey }) => {
                 .limit(15);
 
             if (error) throw error;
-            setRawData(rows || []);
+            if (isMounted()) setRawData(rows || []);
         } catch (e) {
             console.error('Error fetching trends:', e);
         } finally {
-            setIsLoading(false);
+            if (isMounted()) setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        if (isOpen) fetchTrends();
+        if (!isOpen) return;
+        let mounted = true;
+        fetchTrends(() => mounted);
+        return () => { mounted = false; };
     }, [isOpen, refreshKey, fetchTrends]);
 
     // Derive chart data and line config based on view + station

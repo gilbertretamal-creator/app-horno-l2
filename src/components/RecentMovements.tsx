@@ -20,7 +20,7 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
     const [records, setRecords] = useState<MovementRecord[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchRecentMovements = useCallback(async () => {
+    const fetchRecentMovements = useCallback(async (isMounted: () => boolean) => {
         setIsLoading(true);
         try {
             const { data: rows, error } = await supabase
@@ -30,7 +30,8 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
                 .order('fecha', { ascending: false })
                 .limit(5);
 
-            if (!error && rows) {
+            if (error) throw error;
+            if (rows && isMounted()) {
                 // Filter records that actually have non-empty adjustment values
                 const filteredRows = rows.filter((row: any) => {
                     if (!row.ajustes_mecanicos) return false;
@@ -49,12 +50,14 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
         } catch (err) {
             console.error('Error fetching recent movements:', err);
         } finally {
-            setIsLoading(false);
+            if (isMounted()) setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchRecentMovements();
+        let mounted = true;
+        fetchRecentMovements(() => mounted);
+        return () => { mounted = false; };
     }, [fetchRecentMovements, refreshKey]);
 
     const countStations = (ajustes: any): number => {
