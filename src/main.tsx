@@ -13,7 +13,7 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: true,  // React Query handles wake-up natively
       refetchOnReconnect: true,
       retry: 2,
-      staleTime: 1000 * 60,        // 1 minute – prevents burst on focus
+      staleTime: 1000 * 60 * 2,    // 2 minutes – prevents burst on focus and relies on local cache
       gcTime: 1000 * 60 * 5,       // 5 minutes – keep cache warm in memory
     }
   }

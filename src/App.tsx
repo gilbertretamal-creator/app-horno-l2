@@ -19,7 +19,7 @@ import { addOfflineInspection, syncOfflineInspections, getOfflineInspections } f
 import { exportToCSV } from './utils/csvExport';
 import './components/LandingPage.css';
 import './App.css';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useIsFetching } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'kiln_inspection_draft';
 
@@ -42,7 +42,8 @@ function App() {
   const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
   const [loadedRecordCreatedAt, setLoadedRecordCreatedAt] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'tecnico' | 'supervisor' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMain, setIsLoadingMain] = useState(true);
+  const isFetchingGlobal = useIsFetching();
   const isInitializedRef = useRef(false);
   // ── Track last known session identity to avoid redundant setState ──
   const lastUserIdRef = useRef<string | null>(null);
@@ -108,7 +109,7 @@ function App() {
       } finally {
         if (isMounted) {
           isInitializedRef.current = true;
-          setIsLoading(false); // LIBERA EL LOADER
+          setIsLoadingMain(false); // LIBERA EL LOADER
         }
       }
     };
@@ -698,7 +699,7 @@ function App() {
 
   // ==================== RENDER GATE ====================
   // 1. Loading: block all rendering until auth is fully resolved
-  if (isLoading) {
+  if (isLoadingMain) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-800">
         <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -748,6 +749,14 @@ function App() {
               <span className={`app-header-bar-badge ${isGuest ? 'app-header-bar-badge-guest' : 'app-header-bar-badge-tech'}`}>
                 {isGuest ? 'Invitado' : 'Técnico'}
               </span>
+              
+              {/* Global Fetching Indicator */}
+              {isFetchingGlobal > 0 && (
+                <div className="flex items-center gap-1.5 ml-2 text-green-700 bg-green-50 px-2 py-1 rounded-full text-xs font-medium border border-green-200 shadow-sm animate-pulse transition-all">
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span className="hidden sm:inline">Actualizando...</span>
+                </div>
+              )}
             </div>
             <div className="app-header-bar-right">
               {!isGuest && (
