@@ -846,6 +846,17 @@ function App() {
                 <Table2 size={18} />
                 Exportar CSV
               </button>
+
+              {userRole === 'supervisor' && (
+                <button
+                  onClick={() => { throw new Error("Falla de prueba Sentry - Arauco L2"); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition font-bold"
+                  title="Test Sentry ErrorBoundary"
+                >
+                  Forzar Error Crítico
+                </button>
+              )}
+
               {!isGuest && (
                 <button
                   onClick={handleSaveSupabase}
