@@ -177,9 +177,29 @@ function App() {
     };
 
     window.addEventListener('online', handleOnlineSync);
+
+    // ====== VISIBILITY API: WAKE-UP RECONNECTION ======
+    // When user returns to this tab after the browser sleeps it, silently
+    // revalidate the Supabase session. This forces the client to reconnect
+    // before the user tries to click anything, preventing a silent deadlock.
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!isMounted || !isInitializedRef.current) return;
+      try {
+        // Lightweight ping — Supabase will auto-refresh the token if needed
+        // and emit TOKEN_REFRESHED or SIGNED_OUT via onAuthStateChange
+        await supabase.auth.getSession();
+      } catch (e) {
+        console.warn('Supabase wake-up reconnect failed:', e);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isMounted = false;
       window.removeEventListener('online', handleOnlineSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       authListener.subscription.unsubscribe();
     };
   }, []);
