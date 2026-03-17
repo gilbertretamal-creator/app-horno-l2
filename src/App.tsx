@@ -41,6 +41,7 @@ function App() {
   const [loadedRecordId, setLoadedRecordId] = useState<number | null>(null);
   const [loadedRecordCreatedAt, setLoadedRecordCreatedAt] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'tecnico' | 'supervisor' | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const handleToggleStation = (idx: number) => {
     setVisibleStations(prev => {
@@ -62,41 +63,66 @@ function App() {
 
   // Check for existing session on mount
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        setView('app');
-        setIsGuest(false);
-        try {
-          const { data: perfil } = await supabase
-            .from('perfiles')
-            .select('rol')
-            .eq('id', session.user.id)
-            .single();
-          if (perfil) setUserRole(perfil.rol as any);
-        } catch (e) {
-          console.error("Error al obtener rol:", e);
-          setUserRole('tecnico');
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session) {
+          setView('app');
+          setIsGuest(false);
+          try {
+            const { data: perfil, error: perfilError } = await supabase
+              .from('perfiles')
+              .select('rol')
+              .eq('id', session.user.id)
+              .single();
+            if (perfilError) throw perfilError;
+            if (isMounted && perfil) setUserRole(perfil.rol as any);
+          } catch (e) {
+            console.error("Error al obtener rol:", e);
+            if (isMounted) setUserRole('tecnico'); // Asignar por defecto si falla
+          }
         }
+      } catch (err) {
+        console.error("Auth init error, logging out:", err);
+        await supabase.auth.signOut();
+        if (isMounted) {
+          setView('landing');
+          setIsGuest(false);
+          setUserRole(null);
+        }
+      } finally {
+        if (isMounted) setIsInitializing(false);
       }
-    });
+    };
+
+    initializeAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
+      if (!session) {
+        if (isMounted) {
+          setUserRole(null);
+          setView('landing');
+        }
+        return;
+      }
+
+      try {
         setView('app');
         setIsGuest(false);
-        try {
-          const { data: perfil } = await supabase
-            .from('perfiles')
-            .select('rol')
-            .eq('id', session.user.id)
-            .single();
-          if (perfil) setUserRole(perfil.rol as any);
-        } catch (e) {
-          console.error("Error al obtener rol:", e);
-          setUserRole('tecnico');
-        }
-      } else {
-        setUserRole(null);
+        const { data: perfil, error } = await supabase
+          .from('perfiles')
+          .select('rol')
+          .eq('id', session.user.id)
+          .single();
+        if (error) throw error;
+        if (isMounted && perfil) setUserRole(perfil.rol as any);
+      } catch (e) {
+        console.error("Error al obtener rol en onAuthStateChange:", e);
+        if (isMounted) setUserRole('tecnico');
       }
     });
 
@@ -597,6 +623,15 @@ function App() {
       setIsFetching(false);
     }
   };
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-800">
+        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="text-lg font-semibold animate-pulse text-green-700">Cargando sistema...</div>
+      </div>
+    );
+  }
 
   // ==================== LANDING PAGE VIEW ====================
   if (view === 'landing') {
