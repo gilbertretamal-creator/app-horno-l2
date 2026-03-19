@@ -27,7 +27,7 @@ export const RecentMovements: React.FC<RecentMovementsProps> = ({ refreshKey, on
                 .select('id, fecha, turno, tecnico, ajustes_mecanicos')
                 .not('ajustes_mecanicos', 'is', null)
                 .order('fecha', { ascending: false })
-                .limit(5);
+                .limit(30);
 
             if (error) throw error;
             if (!rows) return [];

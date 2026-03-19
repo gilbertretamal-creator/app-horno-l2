@@ -246,12 +246,29 @@ function App() {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('inspecciones')
-        .select('id, fecha, turno, tecnico')
+        .select('id, fecha, turno, tecnico, ajustes_mecanicos')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(30);
       if (error) throw error;
       if (!rows) return [];
-      return (rows as any[]).sort((a: any, b: any) =>
+
+      const filteredRows = rows.filter((row: any) => {
+          if (!row.ajustes_mecanicos) return true;
+          
+          const ajustes = typeof row.ajustes_mecanicos === 'string'
+              ? JSON.parse(row.ajustes_mecanicos)
+              : row.ajustes_mecanicos;
+              
+          const hasMovements = Object.values(ajustes).some((station: any) =>
+              Object.values(station).some((v: any) => {
+                  const num = parseFloat(String(v));
+                  return !isNaN(num) && num !== 0; 
+              })
+          );
+          return !hasMovements; 
+      });
+
+      return filteredRows.slice(0, 5).sort((a: any, b: any) =>
         (a.fecha || '').localeCompare(b.fecha || '')
       );
     },
