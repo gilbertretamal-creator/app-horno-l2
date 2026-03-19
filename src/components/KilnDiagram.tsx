@@ -166,8 +166,24 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                 <path d="M 110 130 L 50 130 L 50 125 L 30 135 L 50 145 L 50 140 L 110 140 Z" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
 
                 {/* Thrust Rollers (on Tire III) */}
-                <circle cx="530" cy="130" r="12" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
-                <circle cx="575" cy="130" r="12" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
+                <circle 
+                    cx={ajustes?.roceAxial === 'Descarga' ? 526 : 520} 
+                    cy="130" 
+                    r="12" 
+                    fill="#fef08a" 
+                    stroke="#ca8a04" 
+                    strokeWidth="1" 
+                    className="transition-all duration-500 ease-in-out" 
+                />
+                <circle 
+                    cx={ajustes?.roceAxial === 'Alimentacion' ? 574 : 580} 
+                    cy="130" 
+                    r="12" 
+                    fill="#fef08a" 
+                    stroke="#ca8a04" 
+                    strokeWidth="1" 
+                    className="transition-all duration-500 ease-in-out" 
+                />
 
                 {/* Tires and Rollers */}
                 {[
