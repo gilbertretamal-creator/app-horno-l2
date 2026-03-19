@@ -11,6 +11,7 @@ export interface AjustesMecanicos {
     II: StationAdjustment;
     III: StationAdjustment;
     IV: StationAdjustment;
+    roceAxial?: 'Descarga' | 'Neutro' | 'Alimentacion' | null;
 }
 
 export const initialAjustes: AjustesMecanicos = {
@@ -18,6 +19,7 @@ export const initialAjustes: AjustesMecanicos = {
     II: { AN: '', AS: '', PN: '', PS: '' },
     III: { AN: '', AS: '', PN: '', PS: '' },
     IV: { AN: '', AS: '', PN: '', PS: '' },
+    roceAxial: null,
 };
 
 export interface InspectionData {

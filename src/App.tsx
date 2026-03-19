@@ -67,6 +67,16 @@ function App() {
     }));
   };
 
+  const handleRoceChange = (roce: 'Descarga' | 'Neutro' | 'Alimentacion' | null) => {
+    setData(prev => ({
+      ...prev,
+      ajustesMecanicos: {
+        ...prev.ajustesMecanicos,
+        roceAxial: prev.ajustesMecanicos.roceAxial === roce ? null : roce
+      }
+    }));
+  };
+
   // ====== AUTH INITIALIZATION ======
   useEffect(() => {
     let isMounted = true;
@@ -294,8 +304,10 @@ function App() {
 
     for (const st of stations) {
       // Polín Norte = AN (Andes/Norte) + PN (Pac./Norte)
-      const anVal = parseFloat(ajustes[st].AN);
-      const pnVal = parseFloat(ajustes[st].PN);
+      const anValStr = String(ajustes[st].AN || '');
+      const pnValStr = String(ajustes[st].PN || '');
+      const anVal = parseFloat(anValStr.replace(',', '.'));
+      const pnVal = parseFloat(pnValStr.replace(',', '.'));
       const norteHas = (!isNaN(anVal) && anVal !== 0) || (!isNaN(pnVal) && pnVal !== 0);
       if (norteHas) {
         const parts: string[] = [];
@@ -307,12 +319,14 @@ function App() {
         }
         // Spanish grammar: 'y' → 'e' before words starting with 'i' (e.g. 'e ingresando')
         const connector = parts.length === 2 && parts[1].startsWith('i') ? ' e ' : ' y ';
-        lines.push(`Se ajusta polín norte de estación ${st}, ${parts.join(connector)}.`);
+        lines.push(`• Se ajusta polín norte de estación ${st}, ${parts.join(connector)}.`);
       }
 
       // Polín Sur = AS (Andes/Sur) + PS (Pac./Sur)
-      const asVal = parseFloat(ajustes[st].AS);
-      const psVal = parseFloat(ajustes[st].PS);
+      const asValStr = String(ajustes[st].AS || '');
+      const psValStr = String(ajustes[st].PS || '');
+      const asVal = parseFloat(asValStr.replace(',', '.'));
+      const psVal = parseFloat(psValStr.replace(',', '.'));
       const surHas = (!isNaN(asVal) && asVal !== 0) || (!isNaN(psVal) && psVal !== 0);
       if (surHas) {
         const parts: string[] = [];
@@ -323,7 +337,17 @@ function App() {
           parts.push(`${psVal > 0 ? 'ingresando' : 'retirando'} ${Math.abs(psVal)}mm lado Pac./Sur`);
         }
         const connector = parts.length === 2 && parts[1].startsWith('i') ? ' e ' : ' y ';
-        lines.push(`Se ajusta polín sur de estación ${st}, ${parts.join(connector)}.`);
+        lines.push(`• Se ajusta polín sur de estación ${st}, ${parts.join(connector)}.`);
+      }
+    }
+
+    if (ajustes.roceAxial) {
+      if (ajustes.roceAxial === 'Descarga') {
+        lines.push('• Horno se encuentra cargado hacia la descarga.');
+      } else if (ajustes.roceAxial === 'Neutro') {
+        lines.push('• Horno se encuentra centrado.');
+      } else if (ajustes.roceAxial === 'Alimentacion') {
+        lines.push('• Horno se encuentra cargado hacia la alimentación.');
       }
     }
 
@@ -335,7 +359,7 @@ function App() {
       // Remove any existing auto-generated block (support both old and new markers)
       let cleanObs = prev.observations
         .replace(/\n?\[AJUSTES_INI\][\s\S]*?\[AJUSTES_FIN\]\n?/g, '')
-        .replace(/\n?AJUSTES MECÁNICOS:\n(?:Se ajusta polín (?:norte|sur) de estación (?:I|II|III|IV),.*\n?)+/g, '')
+        .replace(/\n?AJUSTES MECÁNICOS:\n(?:(?:• )?Se ajusta polín (?:norte|sur) de estación (?:I|II|III|IV),.*\n?|(?:• )?Horno se encuentra.*\n?)+/g, '')
         .trim();
       const newObs = autoText ? (cleanObs ? `${cleanObs}\n\n${autoText}` : autoText) : cleanObs;
       if (newObs === prev.observations) return prev;
@@ -648,6 +672,7 @@ function App() {
                 II: { ...parsedAjustes.II, ...(parsed.II || {}) },
                 III: { ...parsedAjustes.III, ...(parsed.III || {}) },
                 IV: { ...parsedAjustes.IV, ...(parsed.IV || {}) },
+                roceAxial: parsed.roceAxial || null,
               };
             }
           } catch { /* keep initial */ }
@@ -682,7 +707,8 @@ function App() {
         setData(mapped);
         
         const isActive = (adj: any) => ['AN', 'AS', 'PN', 'PS'].some(k => {
-          const val = parseFloat(adj[k]);
+          const valStr = String(adj[k] || '');
+          const val = parseFloat(valStr.replace(',', '.'));
           return !isNaN(val) && val !== 0;
         });
 
@@ -720,7 +746,8 @@ function App() {
         setData(mapped);
         
         const isActive = (adj: any) => ['AN', 'AS', 'PN', 'PS'].some(k => {
-          const val = parseFloat(adj[k]);
+          const valStr = String(adj[k] || '');
+          const val = parseFloat(valStr.replace(',', '.'));
           return !isNaN(val) && val !== 0;
         });
 
@@ -971,6 +998,7 @@ function App() {
                 ajustes={data.ajustesMecanicos}
                 visibleStations={visibleStations}
                 onToggleStation={handleToggleStation}
+                onRoceChange={handleRoceChange}
                 readOnly={effectiveReadOnly}
               />
             )}
