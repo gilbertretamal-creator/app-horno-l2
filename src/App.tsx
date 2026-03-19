@@ -352,7 +352,7 @@ function App() {
     }
 
     const autoText = lines.length > 0
-      ? `AJUSTES MECÁNICOS:\n${lines.join('\n')}`
+      ? lines.join('\n')
       : '';
 
     setData(prev => {
@@ -360,6 +360,7 @@ function App() {
       let cleanObs = prev.observations
         .replace(/\n?\[AJUSTES_INI\][\s\S]*?\[AJUSTES_FIN\]\n?/g, '')
         .replace(/\n?AJUSTES MECÁNICOS:\n(?:(?:• )?Se ajusta polín (?:norte|sur) de estación (?:I|II|III|IV),.*\n?|(?:• )?Horno se encuentra.*\n?)+/g, '')
+        .replace(/\n?(?:(?:• )?Se ajusta polín (?:norte|sur) de estación (?:I|II|III|IV),.*\n?|(?:• )?Horno se encuentra.*\n?)+/g, '')
         .trim();
       const newObs = autoText ? (cleanObs ? `${cleanObs}\n\n${autoText}` : autoText) : cleanObs;
       if (newObs === prev.observations) return prev;
