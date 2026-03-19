@@ -226,6 +226,7 @@ function App() {
     setSearchDate('');
     setLoadedRecordId(null);
     setLoadedRecordCreatedAt(null);
+    setVisibleStations([false, false, false, false]);
   };
 
   // Handle exit (guest)
@@ -236,6 +237,7 @@ function App() {
     setSearchDate('');
     setLoadedRecordId(null);
     setLoadedRecordCreatedAt(null);
+    setVisibleStations([false, false, false, false]);
   };
 
   // Fetch last 5 recent inspections using React Query
@@ -355,6 +357,7 @@ function App() {
       setIsExporting(false);
       setLoadedRecordId(null);
       setLoadedRecordCreatedAt(null);
+      setVisibleStations([false, false, false, false]);
       localStorage.clear();
       toast.success('Formulario limpiado correctamente.');
     }
@@ -518,6 +521,7 @@ function App() {
         setData(initialData);
         setLoadedRecordId(null);
         setLoadedRecordCreatedAt(null);
+        setVisibleStations([false, false, false, false]);
         localStorage.removeItem(STORAGE_KEY);
 
         if (isOfflineSave) {
@@ -573,6 +577,7 @@ function App() {
         setSearchDate('');
         setLoadedRecordId(null);
         setLoadedRecordCreatedAt(null);
+        setVisibleStations([false, false, false, false]);
         localStorage.removeItem(STORAGE_KEY);
         // Force refresh recent records
         fetchRecentRecords();
@@ -656,7 +661,20 @@ function App() {
         .limit(1);
       if (error) throw error;
       if (rows && rows.length > 0) {
-        setData(mapRowToFormData(rows[0]));
+        const mapped = mapRowToFormData(rows[0]);
+        setData(mapped);
+        
+        const isActive = (adj: any) => ['AN', 'AS', 'PN', 'PS'].some(k => {
+          const val = parseFloat(adj[k]);
+          return !isNaN(val) && val !== 0;
+        });
+
+        setVisibleStations([
+          isActive(mapped.ajustesMecanicos.I),
+          isActive(mapped.ajustesMecanicos.II),
+          isActive(mapped.ajustesMecanicos.III),
+          isActive(mapped.ajustesMecanicos.IV)
+        ]);
         setSearchDate('');
         setLoadedRecordId(id);
         setLoadedRecordCreatedAt(rows[0].created_at);
@@ -681,11 +699,25 @@ function App() {
       const { data: results, error } = await query;
       if (error) throw error;
       if (results && results.length > 0) {
-        setData(mapRowToFormData(results[0]));
+        const mapped = mapRowToFormData(results[0]);
+        setData(mapped);
+        
+        const isActive = (adj: any) => ['AN', 'AS', 'PN', 'PS'].some(k => {
+          const val = parseFloat(adj[k]);
+          return !isNaN(val) && val !== 0;
+        });
+
+        setVisibleStations([
+          isActive(mapped.ajustesMecanicos.I),
+          isActive(mapped.ajustesMecanicos.II),
+          isActive(mapped.ajustesMecanicos.III),
+          isActive(mapped.ajustesMecanicos.IV)
+        ]);
         setLoadedRecordId(results[0].id);
         setLoadedRecordCreatedAt(results[0].created_at);
       } else {
         setData({ ...initialData, date: searchDate || initialData.date });
+        setVisibleStations([false, false, false, false]);
         setLoadedRecordId(null);
         setLoadedRecordCreatedAt(null);
       }
