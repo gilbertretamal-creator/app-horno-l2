@@ -136,7 +136,7 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
 
     return (
         <div className="w-full flex justify-center py-8 relative">
-            <svg viewBox="-20 -100 920 480" className="w-full max-w-5xl h-auto drop-shadow-xl overflow-visible">
+            <svg viewBox="-60 -100 1000 480" className="w-full max-w-5xl h-auto drop-shadow-xl overflow-visible">
                 {/* Main Kiln Body - Gradient Orange */}
                 <defs>
                     <linearGradient id="kilnGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -157,6 +157,10 @@ export const KilnDiagram: React.FC<KilnDiagramProps> = ({ data, onChange, readOn
                 </defs>
 
                 <rect x="20" y="80" width="860" height="100" fill="url(#kilnGradient)" stroke="#7c2d12" strokeWidth="2" />
+
+                {/* Zone Labels */}
+                <text x="-40" y="130" fill="#7c2d12" fontSize="24" fontWeight="bold" textAnchor="middle" transform="rotate(-90, -40, 130)" letterSpacing="2">ZONA DE DESCARGA</text>
+                <text x="920" y="130" fill="#7c2d12" fontSize="24" fontWeight="bold" textAnchor="middle" transform="rotate(90, 920, 130)" letterSpacing="2">ZONA DE ALIMENTACIÓN</text>
 
                 {/* Rotation Arrow */}
                 <path d="M 230 185 C 230 230, 270 230, 270 185 L 265 185 L 275 170 L 285 185 L 280 185 C 280 245, 220 245, 220 185 Z" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
